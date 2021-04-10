@@ -1,4 +1,4 @@
-# goerr
+# goerr [![Build Status](https://travis-ci.com/m-mizutani/goerr.svg?branch=master)](https://travis-ci.com/m-mizutani/goerr) [![Go Reference](https://pkg.go.dev/badge/github.com/m-mizutani/goerr.svg)](https://pkg.go.dev/github.com/m-mizutani/goerr)
 
 Package `goerr` provides powerful error handling features in Go.
 

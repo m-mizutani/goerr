@@ -7,6 +7,7 @@ Package `goerr` provides powerful error handling features in Go.
 
 ## Usage
 
+Example code is [here](examples/basic/main.go)
 ```go
 package main
 
@@ -44,4 +45,4 @@ exit status 1
 
 ## License
 
-MIT License. See [LICENSE](LICENSE) for more detail.
+The 2-Clause BSD License. See [LICENSE](LICENSE) for more detail.

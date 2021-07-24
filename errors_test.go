@@ -44,7 +44,7 @@ func TestStackTrace(t *testing.T) {
 	require.Equal(t, 4, len(st))
 	assert.Equal(t, "github.com/m-mizutani/goerr_test.oops", st[0].Func)
 	assert.Regexp(t, `/goerr/errors_test\.go$`, st[0].File)
-	assert.Equal(t, 13, st[0].Line)
+	assert.Equal(t, 14, st[0].Line)
 }
 
 func TestMultileWrap(t *testing.T) {

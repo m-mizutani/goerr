@@ -1,6 +1,7 @@
 package goerr_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -53,4 +54,19 @@ func TestMultileWrap(t *testing.T) {
 
 	err3 := goerr.Wrap(err1, "some message")
 	assert.NotEqual(t, err1, err3)
+}
+
+func TestErrorCode(t *testing.T) {
+	rootErr := goerr.New("something bad")
+	baseErr1 := goerr.New("oops").Code("code1")
+	baseErr2 := goerr.New("oops").Code("code2")
+
+	newErr := baseErr1.Wrap(rootErr).With("v", 1)
+
+	assert.True(t, errors.Is(newErr, baseErr1))
+	assert.NotEqual(t, newErr, baseErr1)
+	assert.NotNil(t, newErr.Values()["v"])
+	assert.Nil(t, baseErr1.Values()["v"])
+
+	assert.False(t, errors.Is(newErr, baseErr2))
 }

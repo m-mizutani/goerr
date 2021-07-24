@@ -1,6 +1,7 @@
 package goerr
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -36,6 +37,7 @@ func Wrap(cause error, msg ...interface{}) *Error {
 // Error is error interface for deepalert to handle related variables
 type Error struct {
 	msg    string
+	code   string
 	st     *stack
 	cause  error
 	values map[string]interface{}
@@ -102,6 +104,32 @@ func (x *Error) Unwrap() error {
 func (x *Error) With(key string, value interface{}) *Error {
 	x.values[key] = value
 	return x
+}
+
+// Is returns true if target is goerr.Error and Error.code of two errors are matched. It's for errors.Is. If Error.code is empty, it always returns false.
+func (x *Error) Is(target error) bool {
+	var err *Error
+	if errors.As(target, &err) {
+		if x.code != "" && x.code == err.code {
+			return true
+		}
+	}
+
+	return false
+}
+
+// Code sets string to check equality in Error.IS()
+func (x *Error) Code(code string) *Error {
+	x.code = code
+	return x
+}
+
+// Error.Wrap creates a new Error and copy message and code to new one.
+func (x *Error) Wrap(cause error) *Error {
+	err := newError(x.msg)
+	err.cause = cause
+	err.code = x.code
+	return err
 }
 
 // Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.

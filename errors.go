@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // New creates a new error with message
@@ -48,6 +50,7 @@ func newError(msg string) *Error {
 		msg:    msg,
 		st:     callers(),
 		values: make(map[string]interface{}),
+		code:   uuid.New().String(),
 	}
 }
 

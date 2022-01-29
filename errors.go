@@ -11,7 +11,9 @@ import (
 
 // New creates a new error with message
 func New(msg string) *Error {
-	return newError(msg)
+	err := newError()
+	err.msg = msg
+	return err
 }
 
 // Wrap creates a new Error and add message
@@ -21,14 +23,15 @@ func Wrap(cause error, msg ...interface{}) *Error {
 		for _, m := range msg {
 			newMsgs = append(newMsgs, fmt.Sprintf("%v", m))
 		}
-		err := newError(strings.Join(newMsgs, " "))
+		err := newError()
+		err.msg = strings.Join(newMsgs, " ")
 		err.cause = cause
 		return err
 	}
 
 	err, ok := cause.(*Error)
 	if !ok {
-		err = newError("wrapped error")
+		err = newError()
 		err.cause = cause
 		return err
 	}
@@ -45,13 +48,20 @@ type Error struct {
 	values map[string]interface{}
 }
 
-func newError(msg string) *Error {
+func newError() *Error {
 	return &Error{
-		msg:    msg,
 		st:     callers(),
 		values: make(map[string]interface{}),
 		code:   uuid.New().String(),
 	}
+}
+
+func (x *Error) copy(dst *Error) {
+	dst.msg = x.msg
+	dst.code = x.code
+	dst.cause = x.cause
+	// values are not copied
+	// st (stacktrace) is not copied
 }
 
 // Error returns error message for error interface
@@ -127,11 +137,18 @@ func (x *Error) Code(code string) *Error {
 	return x
 }
 
-// Error.Wrap creates a new Error and copy message and code to new one.
+// Wrap creates a new Error and copy message and code to new one.
 func (x *Error) Wrap(cause error) *Error {
-	err := newError(x.msg)
+	err := newError()
+	x.copy(err)
 	err.cause = cause
-	err.code = x.code
+	return err
+}
+
+// New returns a copy of original error. Stacktrace of copied error is regenerated.
+func (x *Error) New() *Error {
+	err := newError()
+	x.copy(err)
 	return err
 }
 

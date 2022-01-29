@@ -64,8 +64,8 @@ func (x *Error) copy(dst *Error) {
 	// st (stacktrace) is not copied
 }
 
-// Export returns printable object
-func (x *Error) Export() *printable {
+// Printable returns printable object
+func (x *Error) Printable() *printable {
 	e := &printable{
 		Message:    x.msg,
 		Code:       x.code,

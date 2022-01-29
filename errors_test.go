@@ -81,3 +81,14 @@ func TestErrorNew(t *testing.T) {
 	// But having different stacktraces
 	assert.NotEqual(t, err1.Stacks()[0].Line, err2.Stacks()[0].Line)
 }
+
+func TestPrintable(t *testing.T) {
+	cause := errors.New("test")
+	err := goerr.Wrap(cause, "oops").Code("E001").With("blue", "five")
+
+	p := err.Printable()
+	assert.Equal(t, "oops", p.Message)
+	assert.Equal(t, "E001", p.Code)
+	assert.Equal(t, cause, p.Cause)
+	assert.Equal(t, "five", p.Values["blue"])
+}

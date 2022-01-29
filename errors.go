@@ -64,6 +64,29 @@ func (x *Error) copy(dst *Error) {
 	// st (stacktrace) is not copied
 }
 
+// Export returns printable object
+func (x *Error) Export() *printable {
+	e := &printable{
+		Message:    x.msg,
+		Code:       x.code,
+		StackTrace: x.Stacks(),
+		Cause:      x.cause,
+		Values:     make(map[string]interface{}),
+	}
+	for k, v := range x.values {
+		e.Values[k] = v
+	}
+	return e
+}
+
+type printable struct {
+	Message    string                 `json:"message"`
+	Code       string                 `json:"code"`
+	StackTrace []*Stack               `json:"stacktrace"`
+	Cause      error                  `json:"cause"`
+	Values     map[string]interface{} `json:"values"`
+}
+
 // Error returns error message for error interface
 func (x *Error) Error() string {
 	s := x.msg

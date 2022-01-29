@@ -1,9 +1,13 @@
-# goerr [![Build Status](https://travis-ci.com/m-mizutani/goerr.svg?branch=master)](https://travis-ci.com/m-mizutani/goerr) [![Go Reference](https://pkg.go.dev/badge/github.com/m-mizutani/goerr.svg)](https://pkg.go.dev/github.com/m-mizutani/goerr)
+# goerr [![test](https://github.com/m-mizutani/goerr/actions/workflows/test.yml/badge.svg)](https://github.com/m-mizutani/goerr/actions/workflows/test.yml) [![gosec](https://github.com/m-mizutani/goerr/actions/workflows/gosec.yml/badge.svg)](https://github.com/m-mizutani/goerr/actions/workflows/gosec.yml) [![package scan](https://github.com/m-mizutani/goerr/actions/workflows/trivy.yml/badge.svg)](https://github.com/m-mizutani/goerr/actions/workflows/trivy.yml) [![Go Reference](https://pkg.go.dev/badge/github.com/m-mizutani/goerr.svg)](https://pkg.go.dev/github.com/m-mizutani/goerr)
 
 Package `goerr` provides powerful error handling features in Go.
 
-- Stacktrace (Compatible with `github.com/pkg/errors`)
-- Keep variables related to error by `With()`
+## Features
+
+- Records stacktrace (Compatible with `github.com/pkg/errors`)
+- Saves error related variables by `With(key, value)`
+- Predefined errors can be copied with new stacktrace
+- Printable structure can be provided including stacktrace and related variables
 
 ## Usage
 

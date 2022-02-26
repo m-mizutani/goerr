@@ -18,23 +18,17 @@ func New(msg string) *Error {
 
 // Wrap creates a new Error and add message
 func Wrap(cause error, msg ...interface{}) *Error {
+	err := newError()
+
 	if len(msg) > 0 {
 		var newMsgs []string
 		for _, m := range msg {
 			newMsgs = append(newMsgs, fmt.Sprintf("%v", m))
 		}
-		err := newError()
 		err.msg = strings.Join(newMsgs, " ")
-		err.cause = cause
-		return err
 	}
 
-	err, ok := cause.(*Error)
-	if !ok {
-		err = newError()
-		err.cause = cause
-		return err
-	}
+	err.cause = cause
 
 	return err
 }

@@ -50,7 +50,7 @@ func TestStackTrace(t *testing.T) {
 func TestMultileWrap(t *testing.T) {
 	err1 := oops()
 	err2 := goerr.Wrap(err1)
-	assert.Equal(t, err1, err2)
+	assert.NotEqual(t, err1, err2)
 
 	err3 := goerr.Wrap(err1, "some message")
 	assert.NotEqual(t, err1, err3)

@@ -54,7 +54,9 @@ func (x *Error) copy(dst *Error) {
 	dst.msg = x.msg
 	dst.code = x.code
 	dst.cause = x.cause
-	// values are not copied
+	for k, v := range x.values {
+		dst.values[k] = v
+	}
 	// st (stacktrace) is not copied
 }
 

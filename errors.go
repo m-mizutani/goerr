@@ -17,7 +17,7 @@ func New(msg string) *Error {
 }
 
 // Wrap creates a new Error and add message
-func Wrap(cause error, msg ...interface{}) *Error {
+func Wrap(cause error, msg ...any) *Error {
 	err := newError()
 
 	if len(msg) > 0 {
@@ -39,13 +39,13 @@ type Error struct {
 	code   string
 	st     *stack
 	cause  error
-	values map[string]interface{}
+	values map[string]any
 }
 
 func newError() *Error {
 	return &Error{
 		st:     callers(),
-		values: make(map[string]interface{}),
+		values: make(map[string]any),
 		code:   uuid.New().String(),
 	}
 }
@@ -67,7 +67,7 @@ func (x *Error) Printable() *printable {
 		Code:       x.code,
 		StackTrace: x.Stacks(),
 		Cause:      x.cause,
-		Values:     make(map[string]interface{}),
+		Values:     make(map[string]any),
 	}
 	for k, v := range x.values {
 		e.Values[k] = v
@@ -76,11 +76,11 @@ func (x *Error) Printable() *printable {
 }
 
 type printable struct {
-	Message    string                 `json:"message"`
-	Code       string                 `json:"code"`
-	StackTrace []*Stack               `json:"stacktrace"`
-	Cause      error                  `json:"cause"`
-	Values     map[string]interface{} `json:"values"`
+	Message    string         `json:"message"`
+	Code       string         `json:"code"`
+	StackTrace []*Stack       `json:"stacktrace"`
+	Cause      error          `json:"cause"`
+	Values     map[string]any `json:"values"`
 }
 
 // Error returns error message for error interface
@@ -133,7 +133,7 @@ func (x *Error) Unwrap() error {
 }
 
 // With adds key and value related to the error event
-func (x *Error) With(key string, value interface{}) *Error {
+func (x *Error) With(key string, value any) *Error {
 	x.values[key] = value
 	return x
 }
@@ -165,8 +165,8 @@ func (x *Error) Wrap(cause error) *Error {
 }
 
 // Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
-func (x *Error) Values() map[string]interface{} {
-	var values map[string]interface{}
+func (x *Error) Values() map[string]any {
+	var values map[string]any
 
 	if cause := x.Unwrap(); cause != nil {
 		if err, ok := cause.(*Error); ok {
@@ -175,7 +175,7 @@ func (x *Error) Values() map[string]interface{} {
 	}
 
 	if values == nil {
-		values = make(map[string]interface{})
+		values = make(map[string]any)
 	}
 
 	for key, value := range x.values {

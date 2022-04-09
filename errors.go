@@ -33,19 +33,28 @@ func Wrap(cause error, msg ...any) *Error {
 	return err
 }
 
+// Unwrap returns unwrapped goerr.Error from err by errors.As. If no goerr.Error, returns nil
+func Unwrap(err error) *Error {
+	var e *Error
+	if errors.As(err, &e) {
+		return e
+	}
+	return nil
+}
+
 // Error is error interface for deepalert to handle related variables
 type Error struct {
 	msg    string
 	code   string
 	st     *stack
 	cause  error
-	values map[string]any
+	values map[any]any
 }
 
 func newError() *Error {
 	return &Error{
 		st:     callers(),
-		values: make(map[string]any),
+		values: make(map[any]any),
 		code:   uuid.New().String(),
 	}
 }
@@ -67,7 +76,7 @@ func (x *Error) Printable() *printable {
 		Code:       x.code,
 		StackTrace: x.Stacks(),
 		Cause:      x.cause,
-		Values:     make(map[string]any),
+		Values:     make(map[any]any),
 	}
 	for k, v := range x.values {
 		e.Values[k] = v
@@ -76,11 +85,11 @@ func (x *Error) Printable() *printable {
 }
 
 type printable struct {
-	Message    string         `json:"message"`
-	Code       string         `json:"code"`
-	StackTrace []*Stack       `json:"stacktrace"`
-	Cause      error          `json:"cause"`
-	Values     map[string]any `json:"values"`
+	Message    string      `json:"message"`
+	Code       string      `json:"code"`
+	StackTrace []*Stack    `json:"stacktrace"`
+	Cause      error       `json:"cause"`
+	Values     map[any]any `json:"values"`
 }
 
 // Error returns error message for error interface
@@ -133,7 +142,7 @@ func (x *Error) Unwrap() error {
 }
 
 // With adds key and value related to the error event
-func (x *Error) With(key string, value any) *Error {
+func (x *Error) With(key, value any) *Error {
 	x.values[key] = value
 	return x
 }
@@ -165,8 +174,8 @@ func (x *Error) Wrap(cause error) *Error {
 }
 
 // Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
-func (x *Error) Values() map[string]any {
-	var values map[string]any
+func (x *Error) Values() map[any]any {
+	var values map[any]any
 
 	if cause := x.Unwrap(); cause != nil {
 		if err, ok := cause.(*Error); ok {
@@ -175,7 +184,7 @@ func (x *Error) Values() map[string]any {
 	}
 
 	if values == nil {
-		values = make(map[string]any)
+		values = make(map[any]any)
 	}
 
 	for key, value := range x.values {

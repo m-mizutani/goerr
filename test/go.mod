@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/m-mizutani/goerr v0.1.5
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.7.1
 )
 

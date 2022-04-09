@@ -1,11 +1,11 @@
 package main_test
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 
 	"github.com/m-mizutani/goerr"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -80,4 +80,14 @@ func TestPrintable(t *testing.T) {
 	assert.Equal(t, "E001", p.Code)
 	assert.Equal(t, cause, p.Cause)
 	assert.Equal(t, "five", p.Values["blue"])
+}
+
+func TestUnwrap(t *testing.T) {
+	err1 := goerr.New("omg").With("color", "five")
+	err2 := errors.Wrap(err1, "oops")
+
+	err := goerr.Unwrap(err2)
+	require.NotNil(t, err)
+	values := err.Values()
+	assert.Equal(t, "five", values["color"])
 }

@@ -58,8 +58,8 @@ func TestMultileWrap(t *testing.T) {
 
 func TestErrorCode(t *testing.T) {
 	rootErr := goerr.New("something bad")
-	baseErr1 := goerr.New("oops").Code("code1")
-	baseErr2 := goerr.New("oops").Code("code2")
+	baseErr1 := goerr.New("oops").ID("code1")
+	baseErr2 := goerr.New("oops").ID("code2")
 
 	newErr := baseErr1.Wrap(rootErr).With("v", 1)
 
@@ -73,11 +73,11 @@ func TestErrorCode(t *testing.T) {
 
 func TestPrintable(t *testing.T) {
 	cause := errors.New("test")
-	err := goerr.Wrap(cause, "oops").Code("E001").With("blue", "five")
+	err := goerr.Wrap(cause, "oops").ID("E001").With("blue", "five")
 
 	p := err.Printable()
 	assert.Equal(t, "oops", p.Message)
-	assert.Equal(t, "E001", p.Code)
+	assert.Equal(t, "E001", p.ID)
 	assert.Equal(t, cause, p.Cause)
 	assert.Equal(t, "five", p.Values["blue"])
 }

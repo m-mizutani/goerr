@@ -1,13 +1,13 @@
 # goerr [![test](https://github.com/m-mizutani/goerr/actions/workflows/test.yml/badge.svg)](https://github.com/m-mizutani/goerr/actions/workflows/test.yml) [![gosec](https://github.com/m-mizutani/goerr/actions/workflows/gosec.yml/badge.svg)](https://github.com/m-mizutani/goerr/actions/workflows/gosec.yml) [![package scan](https://github.com/m-mizutani/goerr/actions/workflows/trivy.yml/badge.svg)](https://github.com/m-mizutani/goerr/actions/workflows/trivy.yml) [![Go Reference](https://pkg.go.dev/badge/github.com/m-mizutani/goerr.svg)](https://pkg.go.dev/github.com/m-mizutani/goerr)
 
-Package `goerr` provides powerful error handling features in Go.
+Package `goerr` provides more contextual error handling in Go.
 
-## Features
+## Main Features
 
+- Adding contextual variables to error by `With(key, value)`
 - Records stacktrace (Compatible with `github.com/pkg/errors`)
-- Saves error related variables by `With(key, value)`
-- Predefined errors can be copied with new stacktrace
-- Printable structure can be provided including stacktrace and related variables
+- Supports `errors.Is` to identify error and `errors.As` to unwrap error
+- Provides structured stacktrace and contextual variables
 
 ## Usage
 

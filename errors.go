@@ -45,7 +45,7 @@ func Unwrap(err error) *Error {
 // Error is error interface for deepalert to handle related variables
 type Error struct {
 	msg    string
-	code   string
+	id     string
 	st     *stack
 	cause  error
 	values map[any]any
@@ -55,13 +55,13 @@ func newError() *Error {
 	return &Error{
 		st:     callers(),
 		values: make(map[any]any),
-		code:   uuid.New().String(),
+		id:     uuid.New().String(),
 	}
 }
 
 func (x *Error) copy(dst *Error) {
 	dst.msg = x.msg
-	dst.code = x.code
+	dst.id = x.id
 	dst.cause = x.cause
 	for k, v := range x.values {
 		dst.values[k] = v
@@ -73,7 +73,7 @@ func (x *Error) copy(dst *Error) {
 func (x *Error) Printable() *printable {
 	e := &printable{
 		Message:    x.msg,
-		Code:       x.code,
+		ID:         x.id,
 		StackTrace: x.Stacks(),
 		Cause:      x.cause,
 		Values:     make(map[any]any),
@@ -86,7 +86,7 @@ func (x *Error) Printable() *printable {
 
 type printable struct {
 	Message    string      `json:"message"`
-	Code       string      `json:"code"`
+	ID         string      `json:"id"`
 	StackTrace []*Stack    `json:"stacktrace"`
 	Cause      error       `json:"cause"`
 	Values     map[any]any `json:"values"`
@@ -147,25 +147,25 @@ func (x *Error) With(key, value any) *Error {
 	return x
 }
 
-// Is returns true if target is goerr.Error and Error.code of two errors are matched. It's for errors.Is. If Error.code is empty, it always returns false.
+// Is returns true if target is goerr.Error and Error.id of two errors are matched. It's for errors.Is. If Error.id is empty, it always returns false.
 func (x *Error) Is(target error) bool {
 	var err *Error
 	if errors.As(target, &err) {
-		if x.code != "" && x.code == err.code {
+		if x.id != "" && x.id == err.id {
 			return true
 		}
 	}
 
-	return false
+	return x == target
 }
 
-// Code sets string to check equality in Error.IS()
-func (x *Error) Code(code string) *Error {
-	x.code = code
+// ID sets string to check equality in Error.IS()
+func (x *Error) ID(id string) *Error {
+	x.id = id
 	return x
 }
 
-// Wrap creates a new Error and copy message and code to new one.
+// Wrap creates a new Error and copy message and id to new one.
 func (x *Error) Wrap(cause error) *Error {
 	err := newError()
 	x.copy(err)

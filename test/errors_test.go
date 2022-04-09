@@ -1,4 +1,4 @@
-package goerr_test
+package main_test
 
 import (
 	"errors"
@@ -25,16 +25,16 @@ func wrapError() *goerr.Error {
 
 func TestNew(t *testing.T) {
 	err := oops()
-	assert.Contains(t, fmt.Sprintf("%+v", err), "goerr_test.oops")
+	assert.Contains(t, fmt.Sprintf("%+v", err), "test_test.oops")
 	assert.Contains(t, err.Error(), "omg")
 }
 
 func TestWrapError(t *testing.T) {
 	err := wrapError()
 	st := fmt.Sprintf("%+v", err)
-	assert.Contains(t, st, "github.com/m-mizutani/goerr_test.wrapError\n")
-	assert.Contains(t, st, "github.com/m-mizutani/goerr_test.TestWrapError\n")
-	assert.NotContains(t, st, "github.com/m-mizutani/goerr_test.normalError\n")
+	assert.Contains(t, st, "github.com/m-mizutani/goerr/test_test.wrapError\n")
+	assert.Contains(t, st, "github.com/m-mizutani/goerr/test_test.TestWrapError\n")
+	assert.NotContains(t, st, "github.com/m-mizutani/goerr/test_test.normalError\n")
 	assert.Contains(t, err.Error(), "orange: red")
 }
 
@@ -42,8 +42,8 @@ func TestStackTrace(t *testing.T) {
 	err := oops()
 	st := err.Stacks()
 	require.Equal(t, 4, len(st))
-	assert.Equal(t, "github.com/m-mizutani/goerr_test.oops", st[0].Func)
-	assert.Regexp(t, `/goerr/errors_test\.go$`, st[0].File)
+	assert.Equal(t, "github.com/m-mizutani/goerr/test_test.oops", st[0].Func)
+	assert.Regexp(t, `/goerr/test/errors_test\.go$`, st[0].File)
 	assert.Equal(t, 14, st[0].Line)
 }
 

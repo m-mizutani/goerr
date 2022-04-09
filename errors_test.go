@@ -71,17 +71,6 @@ func TestErrorCode(t *testing.T) {
 	assert.False(t, errors.Is(newErr, baseErr2))
 }
 
-func TestErrorNew(t *testing.T) {
-	err1 := goerr.New("oops")
-	err2 := err1.New()
-
-	// Same error
-	assert.ErrorIs(t, err2, err1)
-	assert.Equal(t, err1.Error(), err2.Error())
-	// But having different stacktraces
-	assert.NotEqual(t, err1.Stacks()[0].Line, err2.Stacks()[0].Line)
-}
-
 func TestPrintable(t *testing.T) {
 	cause := errors.New("test")
 	err := goerr.Wrap(cause, "oops").Code("E001").With("blue", "five")

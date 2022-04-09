@@ -164,13 +164,6 @@ func (x *Error) Wrap(cause error) *Error {
 	return err
 }
 
-// New returns a copy of original error. Stacktrace of copied error is regenerated.
-func (x *Error) New() *Error {
-	err := newError()
-	x.copy(err)
-	return err
-}
-
 // Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
 func (x *Error) Values() map[string]interface{} {
 	var values map[string]interface{}

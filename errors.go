@@ -10,9 +10,9 @@ import (
 )
 
 // New creates a new error with message
-func New(msg string) *Error {
+func New(format string, args ...string) *Error {
 	err := newError()
-	err.msg = msg
+	err.msg = fmt.Sprintf(format, args)
 	return err
 }
 

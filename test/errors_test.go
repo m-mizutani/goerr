@@ -91,3 +91,8 @@ func TestUnwrap(t *testing.T) {
 	values := err.Values()
 	assert.Equal(t, "five", values["color"])
 }
+
+func TestFormat(t *testing.T) {
+	err := goerr.New("test: %s", "blue")
+	assert.Equal(t, "test: blue", err.Error())
+}

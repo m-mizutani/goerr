@@ -96,3 +96,8 @@ func TestFormat(t *testing.T) {
 	err := goerr.New("test: %s", "blue")
 	assert.Equal(t, "test: blue", err.Error())
 }
+
+func TestErrorString(t *testing.T) {
+	err := goerr.Wrap(goerr.Wrap(goerr.New("blue"), "orange"), "red")
+	assert.Equal(t, "red: orange: blue", err.Error())
+}

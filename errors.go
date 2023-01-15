@@ -96,23 +96,12 @@ type printable struct {
 func (x *Error) Error() string {
 	s := x.msg
 	cause := x.cause
-	for i := 0; i < 16; i++ {
-		if cause == nil {
-			break
-		}
 
-		s = fmt.Sprintf("%s: %v", s, cause.Error())
-		type errorUnwrap interface {
-			Unwrap() error
-		}
-
-		unwrapable, ok := cause.(errorUnwrap)
-		if !ok {
-			break
-		}
-
-		cause = unwrapable.Unwrap()
+	if cause == nil {
+		return s
 	}
+
+	s = fmt.Sprintf("%s: %v", s, cause.Error())
 
 	return s
 }

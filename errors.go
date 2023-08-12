@@ -6,6 +6,8 @@ import (
 	"io"
 	"strings"
 
+	"log/slog"
+
 	"github.com/google/uuid"
 )
 
@@ -181,4 +183,30 @@ func (x *Error) Values() map[string]any {
 	}
 
 	return values
+}
+
+func (x *Error) LogValue() slog.Value {
+	attrs := []slog.Attr{
+		slog.String("message", x.msg),
+	}
+	var values []any
+	for k, v := range x.values {
+		values = append(values, slog.Any(k, v))
+	}
+	attrs = append(attrs, slog.Group("values", values...))
+
+	var stacktrace any
+	var traces []string
+	for _, st := range x.StackTrace() {
+		traces = append(traces, fmt.Sprintf("%s:%d %s", st.file(), st.line(), st.name()))
+	}
+	stacktrace = traces
+
+	attrs = append(attrs, slog.Any("stacktrace", stacktrace))
+
+	if x.cause != nil {
+		attrs = append(attrs, slog.Any("cause", x.cause))
+	}
+
+	return slog.GroupValue(attrs...)
 }

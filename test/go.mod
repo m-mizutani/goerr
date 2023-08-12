@@ -1,6 +1,6 @@
 module github.com/m-mizutani/goerr/test
 
-go 1.18
+go 1.21
 
 require (
 	github.com/m-mizutani/goerr v0.1.5

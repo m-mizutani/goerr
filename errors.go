@@ -205,7 +205,13 @@ func (x *Error) LogValue() slog.Value {
 	attrs = append(attrs, slog.Any("stacktrace", stacktrace))
 
 	if x.cause != nil {
-		attrs = append(attrs, slog.Any("cause", x.cause))
+		var errAttr slog.Attr
+		if lv, ok := x.cause.(slog.LogValuer); ok {
+			errAttr = slog.Any("cause", lv.LogValue())
+		} else {
+			errAttr = slog.Any("cause", x.cause)
+		}
+		attrs = append(attrs, errAttr)
 	}
 
 	return slog.GroupValue(attrs...)

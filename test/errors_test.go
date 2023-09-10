@@ -1,7 +1,9 @@
 package main_test
 
 import (
+	"bytes"
 	"fmt"
+	"log/slog"
 	"testing"
 
 	"github.com/m-mizutani/goerr"
@@ -44,7 +46,7 @@ func TestStackTrace(t *testing.T) {
 	require.Equal(t, 4, len(st))
 	assert.Equal(t, "github.com/m-mizutani/goerr/test_test.oops", st[0].Func)
 	assert.Regexp(t, `/goerr/test/errors_test\.go$`, st[0].File)
-	assert.Equal(t, 14, st[0].Line)
+	assert.Equal(t, 16, st[0].Line)
 }
 
 func TestMultileWrap(t *testing.T) {
@@ -100,4 +102,14 @@ func TestFormat(t *testing.T) {
 func TestErrorString(t *testing.T) {
 	err := goerr.Wrap(goerr.Wrap(goerr.New("blue"), "orange"), "red")
 	assert.Equal(t, "red: orange: blue", err.Error())
+}
+
+func TestLoggingNestedError(t *testing.T) {
+	err1 := goerr.New("e1").With("color", "orange")
+	err2 := goerr.Wrap(err1, "e2").With("number", "five")
+	out := &bytes.Buffer{}
+	logger := slog.New(slog.NewJSONHandler(out, nil))
+	logger.Error("fail", slog.Any("error", err2))
+	assert.Contains(t, out.String(), `"number":"five"`)
+	assert.Contains(t, out.String(), `"color":"orange"`)
 }

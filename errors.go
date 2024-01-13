@@ -50,13 +50,13 @@ type Error struct {
 	id     string
 	st     *stack
 	cause  error
-	values map[string]any
+	values map[any]any
 }
 
 func newError() *Error {
 	return &Error{
 		st:     callers(),
-		values: make(map[string]any),
+		values: make(map[any]any),
 		id:     uuid.New().String(),
 	}
 }
@@ -78,7 +78,7 @@ func (x *Error) Printable() *printable {
 		ID:         x.id,
 		StackTrace: x.Stacks(),
 		Cause:      x.cause,
-		Values:     make(map[string]any),
+		Values:     make(map[any]any),
 	}
 	for k, v := range x.values {
 		e.Values[k] = v
@@ -87,11 +87,11 @@ func (x *Error) Printable() *printable {
 }
 
 type printable struct {
-	Message    string         `json:"message"`
-	ID         string         `json:"id"`
-	StackTrace []*Stack       `json:"stacktrace"`
-	Cause      error          `json:"cause"`
-	Values     map[string]any `json:"values"`
+	Message    string      `json:"message"`
+	ID         string      `json:"id"`
+	StackTrace []*Stack    `json:"stacktrace"`
+	Cause      error       `json:"cause"`
+	Values     map[any]any `json:"values"`
 }
 
 // Error returns error message for error interface
@@ -103,7 +103,7 @@ func (x *Error) Error() string {
 		return s
 	}
 
-	s = fmt.Sprintf("%s: %v", s, cause.Error())
+	s = fmt.Sprintf("%v: %v", s, cause.Error())
 
 	return s
 }
@@ -165,8 +165,8 @@ func (x *Error) Wrap(cause error) *Error {
 }
 
 // Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
-func (x *Error) Values() map[string]any {
-	var values map[string]any
+func (x *Error) Values() map[any]any {
+	var values map[any]any
 
 	if cause := x.Unwrap(); cause != nil {
 		if err, ok := cause.(*Error); ok {
@@ -175,7 +175,7 @@ func (x *Error) Values() map[string]any {
 	}
 
 	if values == nil {
-		values = make(map[string]any)
+		values = make(map[any]any)
 	}
 
 	for key, value := range x.values {
@@ -191,7 +191,7 @@ func (x *Error) LogValue() slog.Value {
 	}
 	var values []any
 	for k, v := range x.values {
-		values = append(values, slog.Any(k, v))
+		values = append(values, slog.Any(fmt.Sprintf("%v", k), v))
 	}
 	attrs = append(attrs, slog.Group("values", values...))
 

@@ -133,7 +133,7 @@ func (x *Error) Unwrap() error {
 }
 
 // With adds key and value related to the error event
-func (x *Error) With(key string, value any) *Error {
+func (x *Error) With(key, value any) *Error {
 	x.values[key] = value
 	return x
 }

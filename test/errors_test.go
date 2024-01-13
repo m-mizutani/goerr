@@ -113,3 +113,9 @@ func TestLoggingNestedError(t *testing.T) {
 	assert.Contains(t, out.String(), `"number":"five"`)
 	assert.Contains(t, out.String(), `"color":"orange"`)
 }
+
+func TestWithAnyKey(t *testing.T) {
+	type myKey struct{}
+	err := goerr.New("e1").With(myKey{}, "orange")
+	assert.Equal(t, "orange", err.Values()[myKey{}])
+}

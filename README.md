@@ -116,7 +116,7 @@ Output:
 exit status 1
 ```
 
-If you want to send the error to sentry.io, you can extract the contextual variables by `goErr.Values()` and set them to the scope.
+If you want to send the error to sentry.io with [SDK](https://docs.sentry.io/platforms/go/), you can extract the contextual variables by `goErr.Values()` and set them to the scope.
 
 ```go
 // Sending error to Sentry

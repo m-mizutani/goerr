@@ -16,10 +16,14 @@ func someAction(fname string) error {
 
 func main() {
 	if err := someAction("no_such_file.txt"); err != nil {
-		// NOTE: `errors.Unwrap` also works
+		/*
+			// NOTE: errors.As also works
+			var goErr *goerr.Error
+			if errors.As(err, &goErr); goErr != nil {
+		*/
 		if goErr := goerr.Unwrap(err); goErr != nil {
 			for i, st := range goErr.Stacks() {
-				log.Printf("%d: %v\n", i, st)
+				log.Printf("%d: %+v\n", i, st)
 			}
 		}
 		log.Fatal(err)

@@ -155,7 +155,7 @@ func validate(input string) error {
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if err := someAction("ng"); err != nil {
-		logger.Error("fail someAction", slog.Any("error", err))
+		logger.Error("aborted myapp", slog.Any("error", err))
 	}
 }
 ```
@@ -165,7 +165,7 @@ Output:
 {
   "time": "2024-04-06T11:32:40.350873+09:00",
   "level": "ERROR",
-  "msg": "fail someAction",
+  "msg": "aborted myapp",
   "error": {
     "message": "failed validation",
     "stacktrace": [

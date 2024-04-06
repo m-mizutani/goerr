@@ -28,6 +28,6 @@ func validate(input string) error {
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if err := someAction("ng"); err != nil {
-		logger.Error("fail someAction", slog.Any("error", err))
+		logger.Error("aborted myapp", slog.Any("error", err))
 	}
 }

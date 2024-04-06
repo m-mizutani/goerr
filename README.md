@@ -119,16 +119,16 @@ exit status 1
 If you want to send the error to sentry.io, you can extract the contextual variables by `goErr.Values()` and set them to the scope.
 
 ```go
-	// Sending error to Sentry
-	hub := sentry.CurrentHub().Clone()
-	hub.ConfigureScope(func(scope *sentry.Scope) {
-		if goErr := goerr.Unwrap(err); goErr != nil {
-			for k, v := range goErr.Values() {
-				scope.SetExtra(k, v)
-			}
-		}
-	})
-	evID := hub.CaptureException(err)
+// Sending error to Sentry
+hub := sentry.CurrentHub().Clone()
+hub.ConfigureScope(func(scope *sentry.Scope) {
+  if goErr := goerr.Unwrap(err); goErr != nil {
+    for k, v := range goErr.Values() {
+      scope.SetExtra(k, v)
+    }
+  }
+})
+evID := hub.CaptureException(err)
 ```
 
 ### Structured logging

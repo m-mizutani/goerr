@@ -18,7 +18,7 @@ func New(format string, args ...any) *Error {
 	return err
 }
 
-// Wrap creates a new Error and add message
+// Wrap creates a new Error and add message.
 func Wrap(cause error, msg ...any) *Error {
 	err := newError()
 
@@ -32,6 +32,14 @@ func Wrap(cause error, msg ...any) *Error {
 
 	err.cause = cause
 
+	return err
+}
+
+// Wrapf creates a new Error and add message. The error message is formatted by fmt.Sprintf.
+func Wrapf(cause error, format string, args ...any) *Error {
+	err := newError()
+	err.msg = fmt.Sprintf(format, args...)
+	err.cause = cause
 	return err
 }
 

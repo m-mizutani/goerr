@@ -4,85 +4,158 @@ Package `goerr` provides more contextual error handling in Go.
 
 ## Features
 
-- Adding contextual variables to error by `With(key, value)`
-- Records stacktrace (Compatible with `github.com/pkg/errors`)
-- Supports `errors.Is` to identify error and `errors.As` to unwrap error
-- Provides structured stacktrace and contextual variables
+`goerr` provides the following features:
+
+- Stack traces
+  - Compatible with `github.com/pkg/errors`.
+  - Structured stack traces with `goerr.Stack` is available.
+- Contextual variables to errors using `With(key, value)`.
+- `errors.Is` to identify errors and `errors.As` to unwrap errors.
+- `slog.LogValuer` interface to output structured logs with `slog`.
 
 ## Usage
 
-### Extract values
+### Stack trace
 
-Example code is [here](examples/basic/main.go)
+`goerr` records stack trace when creating an error. The format is compatible with `github.com/pkg/errors` and it can be used for [sentry.io](https://sentry.io), etc.
+
 ```go
-package main
-
-import (
-	"errors"
-	"log"
-
-	"github.com/m-mizutani/goerr"
-)
-
-func someAction(input string) error {
-	if input != "OK" {
-		return goerr.New("input is not OK").With("input", input).With("time", time.Now())
+func someAction(fname string) error {
+	if _, err := os.Open(fname); err != nil {
+		return goerr.Wrap(err, "failed to open file")
 	}
 	return nil
 }
 
 func main() {
-	if err := someAction("ng"); err != nil {
-		var goErr *goerr.Error
-		if errors.As(err, &goErr) {
-			for k, v := range goErr.Values() {
-				log.Printf("%s = %v\n", k, v)
-			}
-		}
-		log.Fatalf("Error: %+v\n", err)
+	if err := someAction("no_such_file.txt"); err != nil {
+		log.Fatalf("%+v", err)
 	}
 }
 ```
 
 Output:
 ```
-2022/05/14 10:28:08 input = ng
-2022/05/14 10:28:08 time = 2022-05-14 10:28:08.452831 +0900 JST m=+0.000483668
-2022/05/14 10:28:08 Error: input is not OK
+2024/04/06 10:30:27 failed to open file: open no_such_file.txt: no such file or directory
 main.someAction
-        /xxx/goerr/examples/basic/main.go:13
+        /Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/stacktrace_print/main.go:12
 main.main
-        /xxx/goerr/examples/basic/main.go:19
+        /Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/stacktrace_print/main.go:18
 runtime.main
-        /usr/local/go/src/runtime/proc.go:250
+        /usr/local/go/src/runtime/proc.go:271
 runtime.goexit
-        /usr/local/go/src/runtime/asm_arm64.s:1259
+        /usr/local/go/src/runtime/asm_arm64.s:1222
 exit status 1
 ```
 
-### Extract stack trace
+You can not only print the stack trace, but also extract the stack trace by `goerr.Unwrap(err).Stacks()`.
 
 ```go
-import (
-	"github.com/m-mizutani/goerr"
+if err := someAction("no_such_file.txt"); err != nil {
+  // NOTE: `errors.Unwrap` also works
+  if goErr := goerr.Unwrap(err); goErr != nil {
+    for i, st := range goErr.Stacks() {
+      log.Printf("%d: %v\n", i, st)
+    }
+  }
+  log.Fatal(err)
+}
+```
 
-	"github.com/rs/zerolog/log"
-)
+`Stacks()` returns a slice of `goerr.Stack` struct, which contains `Func`, `File`, and `Line`.
+
+```
+2024/04/06 10:35:30 0: &{main.someAction /Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/stacktrace_extract/main.go 12}
+2024/04/06 10:35:30 1: &{main.main /Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/stacktrace_extract/main.go 18}
+2024/04/06 10:35:30 2: &{runtime.main /usr/local/go/src/runtime/proc.go 271}
+2024/04/06 10:35:30 3: &{runtime.goexit /usr/local/go/src/runtime/asm_arm64.s 1222}
+2024/04/06 10:35:30 failed to open file: open no_such_file.txt: no such file or directory
+exit status 1
+```
+
+### Add/Extract contextual variables
+
+`goerr` provides `With(key, value)` to add contextual variables to errors.
+
+```go
+func firstFunc(label string) error {
+	_, err := secondFunc(label+".txt", os.O_RDONLY, 0644)
+	if err != nil {
+		return goerr.Wrap(err, "failed to call secondFunc").With("label", label)
+	}
+	// .....
+	return nil
+}
+
+func secondFunc(fname string, flag int, perm fs.FileMode) ([]byte, error) {
+	if _, err := os.OpenFile(fname, flag, perm); err != nil {
+		return nil, goerr.Wrap(err).With("fname", fname).With("flag", flag)
+	}
+	// .....
+	return nil, nil
+}
+
+func main() {
+	if err := firstFunc("no_such_file"); err != nil {
+		if goErr := goerr.Unwrap(err); goErr != nil {
+			for k, v := range goErr.Values() {
+				log.Printf("var: %s => %v\n", k, v)
+			}
+		}
+		log.Fatalf("msg: %s", err)
+	}
+}
+```
+
+Output:
+```
+2024/04/06 11:10:14 var: fname => no_such_file.txt
+2024/04/06 11:10:14 var: flag => 0
+2024/04/06 11:10:14 var: label => no_such_file
+2024/04/06 11:10:14 msg: failed to call secondFunc: : open no_such_file.txt: no such file or directory
+exit status 1
+```
+
+If you want to send the error to sentry.io, you can extract the contextual variables by `goErr.Values()` and set them to the scope.
+
+```go
+	// Sending error to Sentry
+	hub := sentry.CurrentHub().Clone()
+	hub.ConfigureScope(func(scope *sentry.Scope) {
+		if goErr := goerr.Unwrap(err); goErr != nil {
+			for k, v := range goErr.Values() {
+				scope.SetExtra(k, v)
+			}
+		}
+	})
+	evID := hub.CaptureException(err)
+```
+
+### Structured logging
+
+`goerr` provides `slog.LogValuer` interface to output structured logs with `slog`. It can be used to output not only the error message but also the stack trace and contextual variables. Additionally, unwrapped errors can be output recursively.
+
+```go
+var errRuntime = errors.New("runtime error")
 
 func someAction(input string) error {
+	if err := validate(input); err != nil {
+		return goerr.Wrap(err, "failed validation")
+	}
+	return nil
+}
+
+func validate(input string) error {
 	if input != "OK" {
-		return goerr.New("input is not OK").With("input", input)
+		return goerr.Wrap(errRuntime, "invalid input").With("input", input)
 	}
 	return nil
 }
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	if err := someAction("ng"); err != nil {
-		// Same with errors.As extraction
-		if goErr := goerr.Unwrap(err); goErr != nil {
-			stacks := goErr.Stacks()
-			log.Info().Interface("stackTrace", stacks).Msg("Show stacktrace")
-		}
+		logger.Error("fail someAction", slog.Any("error", err))
 	}
 }
 ```
@@ -90,33 +163,35 @@ func main() {
 Output:
 ```json
 {
-  "level": "info",
-  "stackTrace": [
-    {
-      "func": "main.someAction",
-      "file": "/Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/stacktrace/main.go",
-      "line": 11
-    },
-    {
-      "func": "main.main",
-      "file": "/Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/stacktrace/main.go",
-      "line": 17
-    },
-    {
-      "func": "runtime.main",
-      "file": "/usr/local/go/src/runtime/proc.go",
-      "line": 250
-    },
-    {
-      "func": "runtime.goexit",
-      "file": "/usr/local/go/src/runtime/asm_arm64.s",
-      "line": 1259
+  "time": "2024-04-06T11:32:40.350873+09:00",
+  "level": "ERROR",
+  "msg": "fail someAction",
+  "error": {
+    "message": "failed validation",
+    "stacktrace": [
+      "/Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/logging/main.go:16 main.someAction",
+      "/Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/logging/main.go:30 main.main",
+      "/usr/local/go/src/runtime/proc.go:271 runtime.main",
+      "/usr/local/go/src/runtime/asm_arm64.s:1222 runtime.goexit"
+    ],
+    "cause": {
+      "message": "invalid input",
+      "values": {
+        "input": "ng"
+      },
+      "stacktrace": [
+        "/Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/logging/main.go:23 main.validate",
+        "/Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/logging/main.go:15 main.someAction",
+        "/Users/mizutani/.ghq/github.com/m-mizutani/goerr/examples/logging/main.go:30 main.main",
+        "/usr/local/go/src/runtime/proc.go:271 runtime.main",
+        "/usr/local/go/src/runtime/asm_arm64.s:1222 runtime.goexit"
+      ],
+      "cause": "runtime error"
     }
-  ],
-  "time": "2022-05-14T10:50:42+09:00",
-  "message": "Show stacktrace"
+  }
 }
 ```
+
 
 
 ## License

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 
 	"log/slog"
@@ -8,11 +9,18 @@ import (
 	"github.com/m-mizutani/goerr"
 )
 
-var runtimeError = goerr.New("runtime error")
+var errRuntime = errors.New("runtime error")
 
 func someAction(input string) error {
+	if err := validate(input); err != nil {
+		return goerr.Wrap(err, "failed validation")
+	}
+	return nil
+}
+
+func validate(input string) error {
 	if input != "OK" {
-		return goerr.Wrap(runtimeError, "input is not OK").With("input", input)
+		return goerr.Wrap(errRuntime, "invalid input").With("input", input)
 	}
 	return nil
 }

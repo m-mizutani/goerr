@@ -75,28 +75,41 @@ exit status 1
 
 ### Add/Extract contextual variables
 
-`goerr` provides `With(key, value)` to add contextual variables to errors.
+
+`goerr` provides the `With(key, value)` method to add contextual variables to errors. The standard way to handle errors in Go is by injecting values into error messages. However, this approach makes it difficult to aggregate various errors. On the other hand, `goerr`'s `With` method allows for adding contextual information to errors without changing error message, making it easier to aggregate error logs. Additionally, error handling services like Sentry.io can handle errors more accurately with this feature.
 
 ```go
-func firstFunc(label string) error {
-	_, err := secondFunc(label+".txt", os.O_RDONLY, 0644)
-	if err != nil {
-		return goerr.Wrap(err, "failed to call secondFunc").With("label", label)
+var errFormatMismatch = errors.New("format mismatch")
+
+func someAction(tasks []task) error {
+	for _, t := range tasks {
+		if err := validateData(t.Data); err != nil {
+			return goerr.Wrap(err, "failed to validate data").With("name", t.Name)
+		}
 	}
-	// .....
+	// ....
 	return nil
 }
 
-func secondFunc(fname string, flag int, perm fs.FileMode) ([]byte, error) {
-	if _, err := os.OpenFile(fname, flag, perm); err != nil {
-		return nil, goerr.Wrap(err).With("fname", fname).With("flag", flag)
+func validateData(data string) error {
+	if !strings.HasPrefix(data, "data:") {
+		return goerr.Wrap(errFormatMismatch).With("data", data)
 	}
-	// .....
-	return nil, nil
+	return nil
+}
+
+type task struct {
+	Name string
+	Data string
 }
 
 func main() {
-	if err := firstFunc("no_such_file"); err != nil {
+	tasks := []task{
+		{Name: "task1", Data: "data:1"},
+		{Name: "task2", Data: "invalid"},
+		{Name: "task3", Data: "data:3"},
+	}
+	if err := someAction(tasks); err != nil {
 		if goErr := goerr.Unwrap(err); goErr != nil {
 			for k, v := range goErr.Values() {
 				log.Printf("var: %s => %v\n", k, v)
@@ -109,10 +122,9 @@ func main() {
 
 Output:
 ```
-2024/04/06 11:10:14 var: fname => no_such_file.txt
-2024/04/06 11:10:14 var: flag => 0
-2024/04/06 11:10:14 var: label => no_such_file
-2024/04/06 11:10:14 msg: failed to call secondFunc: : open no_such_file.txt: no such file or directory
+2024/04/06 14:40:59 var: data => invalid
+2024/04/06 14:40:59 var: name => task2
+2024/04/06 14:40:59 msg: failed to validate data: : format mismatch
 exit status 1
 ```
 

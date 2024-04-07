@@ -44,6 +44,10 @@ func Wrapf(cause error, format string, args ...any) *Error {
 }
 
 // Unwrap returns unwrapped goerr.Error from err by errors.As. If no goerr.Error, returns nil
+// NOTE: Do not receive _error_ interface. It causes typed-nil problem.
+//
+//	var err error = goerr.New("error")
+//	if err == nil { // always false
 func Unwrap(err error) *Error {
 	var e *Error
 	if errors.As(err, &e) {

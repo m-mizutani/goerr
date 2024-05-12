@@ -2,20 +2,27 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/m-mizutani/goerr"
 )
 
-func someAction(fname string) error {
-	if _, err := os.Open(fname); err != nil {
-		return goerr.Wrap(err, "failed to open file")
+func nestedAction2() error {
+	return goerr.New("fatal error in the nested action2")
+}
+
+func nestedAction() error {
+	return goerr.Wrap(nestedAction2(), "nestedAction2 failed")
+}
+
+func someAction() error {
+	if err := nestedAction(); err != nil {
+		return goerr.Wrap(err, "nestedAction failed")
 	}
 	return nil
 }
 
 func main() {
-	if err := someAction("no_such_file.txt"); err != nil {
+	if err := someAction(); err != nil {
 		log.Fatalf("%+v", err)
 	}
 }

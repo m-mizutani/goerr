@@ -128,7 +128,10 @@ func (x *Error) Format(s fmt.State, verb rune) {
 	case 'v':
 		if s.Flag('+') {
 			_, _ = io.WriteString(s, x.Error())
-			x.st.Format(s, verb)
+			var c *Error
+			for c = x; c.cause != nil; c = c.cause.(*Error) {
+			}
+			c.st.Format(s, verb)
 			return
 		}
 		fallthrough

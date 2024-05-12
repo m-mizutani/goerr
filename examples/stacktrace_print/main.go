@@ -1,13 +1,14 @@
 package main
 
 import (
+	"errors"
 	"log"
 
 	"github.com/m-mizutani/goerr"
 )
 
 func nestedAction2() error {
-	return goerr.New("fatal error in the nested action2")
+	return errors.New("fatal error in the nested action2")
 }
 
 func nestedAction() error {
@@ -15,10 +16,7 @@ func nestedAction() error {
 }
 
 func someAction() error {
-	if err := nestedAction(); err != nil {
-		return goerr.Wrap(err, "nestedAction failed")
-	}
-	return nil
+	return goerr.Wrap(nestedAction(), "nestedAction failed")
 }
 
 func main() {

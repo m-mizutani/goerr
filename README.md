@@ -73,6 +73,8 @@ if err := someAction("no_such_file.txt"); err != nil {
 exit status 1
 ```
 
+NOTE: If the error is wrapped by `goerr` multiply, `%+v` will print the stack trace of the deepest error.
+
 ### Add/Extract contextual variables
 
 

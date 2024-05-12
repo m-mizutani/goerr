@@ -129,7 +129,12 @@ func (x *Error) Format(s fmt.State, verb rune) {
 		if s.Flag('+') {
 			_, _ = io.WriteString(s, x.Error())
 			var c *Error
-			for c = x; c.cause != nil; c = c.cause.(*Error) {
+			for c = x; c.Unwrap() != nil; {
+				cause, ok := c.Unwrap().(*Error)
+				if !ok {
+					break
+				}
+				c = cause
 			}
 			c.st.Format(s, verb)
 			return

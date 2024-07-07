@@ -206,6 +206,10 @@ func (x *Error) Values() map[string]any {
 }
 
 func (x *Error) LogValue() slog.Value {
+	if x == nil {
+		return slog.AnyValue(nil)
+	}
+
 	attrs := []slog.Attr{
 		slog.String("message", x.msg),
 	}

@@ -167,3 +167,13 @@ func TestLoggingNestedError(t *testing.T) {
 		t.Errorf("Expected log output to contain '\"color\":\"orange\"', got '%s'", out.String())
 	}
 }
+
+func TestLoggerWithNil(t *testing.T) {
+	out := &bytes.Buffer{}
+	var err *goerr.Error
+	logger := slog.New(slog.NewJSONHandler(out, nil))
+	logger.Error("fail", slog.Any("error", err))
+	if !strings.Contains(out.String(), `"error":null`) {
+		t.Errorf("Expected log output to contain '\"error\":null', got '%s'", out.String())
+	}
+}

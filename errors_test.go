@@ -177,3 +177,47 @@ func TestLoggerWithNil(t *testing.T) {
 		t.Errorf("Expected log output to contain '\"error\":null', got '%s'", out.String())
 	}
 }
+
+func TestUnstack(t *testing.T) {
+	t.Run("original stack", func(t *testing.T) {
+		err := oops()
+		st := err.Stacks()
+		if st == nil {
+			t.Error("Expected stack trace to be nil")
+		}
+		if len(st) == 0 {
+			t.Error("Expected stack trace length to be 0")
+		}
+		if st[0].Func != "github.com/m-mizutani/goerr_test.oops" {
+			t.Errorf("Not expected stack trace func name (github.com/m-mizutani/goerr_test.oops): %s", st[0].Func)
+		}
+	})
+
+	t.Run("unstacked", func(t *testing.T) {
+		err := oops().Unstack()
+		st1 := err.Stacks()
+		if st1 == nil {
+			t.Error("Expected stack trace to be non-nil")
+		}
+		if len(st1) == 0 {
+			t.Error("Expected stack trace length to be non-zero")
+		}
+		if st1[0].Func != "github.com/m-mizutani/goerr_test.TestUnstack.func2" {
+			t.Errorf("Not expected stack trace func name (github.com/m-mizutani/goerr_test.TestUnstack.func2): %s", st1[0].Func)
+		}
+	})
+
+	t.Run("unstackN with 2", func(t *testing.T) {
+		err := oops().UnstackN(2)
+		st2 := err.Stacks()
+		if st2 == nil {
+			t.Error("Expected stack trace to be non-nil")
+		}
+		if len(st2) == 0 {
+			t.Error("Expected stack trace length to be non-zero")
+		}
+		if st2[0].Func != "testing.tRunner" {
+			t.Errorf("Not expected stack trace func name (testing.tRunner): %s", st2[0].Func)
+		}
+	})
+}

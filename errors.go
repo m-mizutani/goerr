@@ -158,6 +158,18 @@ func (x *Error) With(key string, value any) *Error {
 	return x
 }
 
+// Unstack trims stack trace by 1. It can be used for internal helper or utility functions.
+func (x *Error) Unstack() *Error {
+	x.st = unstack(x.st, 1)
+	return x
+}
+
+// UnstackN trims stack trace by n. It can be used for internal helper or utility functions.
+func (x *Error) UnstackN(n int) *Error {
+	x.st = unstack(x.st, n)
+	return x
+}
+
 // Is returns true if target is goerr.Error and Error.id of two errors are matched. It's for errors.Is. If Error.id is empty, it always returns false.
 func (x *Error) Is(target error) bool {
 	var err *Error

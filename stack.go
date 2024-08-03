@@ -105,16 +105,16 @@ func (f frame) name() string {
 
 // Format of frame formats the frame according to the fmt.Formatter interface.
 //
-//    %s    source file
-//    %d    source line
-//    %n    function name
-//    %v    equivalent to %s:%d
+//	%s    source file
+//	%d    source line
+//	%n    function name
+//	%v    equivalent to %s:%d
 //
 // Format accepts flags that alter the printing of some verbs, as follows:
 //
-//    %+s   function name and path of source file relative to the compile time
-//          GOPATH separated by \n\t (<funcname>\n\t<path>)
-//    %+v   equivalent to %+s:%d
+//	%+s   function name and path of source file relative to the compile time
+//	      GOPATH separated by \n\t (<funcname>\n\t<path>)
+//	%+v   equivalent to %+s:%d
 func (f frame) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 's':
@@ -149,12 +149,12 @@ func (f frame) MarshalText() ([]byte, error) {
 
 // Format formats the stack of Frames according to the fmt.Formatter interface.
 //
-//    %s	lists source files for each Frame in the stack
-//    %v	lists the source file and line number for each Frame in the stack
+//	%s	lists source files for each Frame in the stack
+//	%v	lists the source file and line number for each Frame in the stack
 //
 // Format accepts flags that alter the printing of some verbs, as follows:
 //
-//    %+v   Prints filename, function, and line number for each Frame in the stack.
+//	%+v   Prints filename, function, and line number for each Frame in the stack.
 func (st StackTrace) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
@@ -206,6 +206,20 @@ func (s *stack) StackTrace() StackTrace {
 		frames[i] = frame((*s)[i])
 	}
 	return frames
+}
+
+func unstack(st *stack, n int) *stack {
+	switch {
+	case n <= 0:
+		var ret stack
+		return &ret
+	case n >= len(*st):
+		return st
+
+	default:
+		ret := (*st)[n:]
+		return &ret
+	}
 }
 
 func callers() *stack {

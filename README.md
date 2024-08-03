@@ -73,7 +73,16 @@ if err := someAction("no_such_file.txt"); err != nil {
 exit status 1
 ```
 
-NOTE: If the error is wrapped by `goerr` multiply, `%+v` will print the stack trace of the deepest error.
+**NOTE**: If the error is wrapped by `goerr` multiply, `%+v` will print the stack trace of the deepest error.
+
+**Tips**: If you want not to print the stack trace for current stack frame, you can use `Unstack` method. Also, `UnstackN` method removes the top multiple stack frames.
+
+```go
+if err := someAction("no_such_file.txt"); err != nil {
+	// Unstack() removes the current stack frame from the error message.
+	return goerr.Wrap(err, "failed to someAction").Unstack()
+}
+```
 
 ### Add/Extract contextual variables
 

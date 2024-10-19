@@ -215,7 +215,39 @@ Output:
 }
 ```
 
+### Builder
 
+`goerr` provides `goerr.NewBuilder()` to create an error with pre-defined contextual variables. It is useful when you want to create an error with the same contextual variables in multiple places.
+
+```go
+type object struct {
+	id    string
+	color string
+}
+
+func (o *object) Validate() error {
+	eb := goerr.NewBuilder().With("id", o.id)
+
+	if o.color == "" {
+		return eb.New("color is empty")
+	}
+
+	return nil
+}
+
+func main() {
+	obj := &object{id: "object-1"}
+
+	if err := obj.Validate(); err != nil {
+		slog.Default().Error("Validation error", "err", err)
+	}
+}
+```
+
+Output:
+```
+2024/10/19 14:19:54 ERROR Validation error err.message="color is empty" err.values.id=object-1 (snip)
+```
 
 ## License
 

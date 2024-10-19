@@ -215,7 +215,32 @@ Output:
 }
 ```
 
+### Context
 
+`goerr` provides `WithContext` method to add values from context to the error. Values can be added to context.Context by `goerr.InjectValue`.
+
+```go
+func someAction(id requestID) error {
+	ctx := context.Background()
+	ctx = goerr.InjectValue(ctx, "request_id", id)
+
+	// ... some action
+
+	return goerr.New("failed").WithContext(ctx)
+}
+
+func main() {
+	id := requestID("req-123")
+	if err := someAction(id); err != nil {
+		slog.Default().Error("aborted", slog.Any("error", err))
+	}
+}
+```
+
+Output:
+```
+2024/10/19 09:51:04 ERROR aborted error.message=failed error.values.request_id=req-123 (snip)
+```
 
 ## License
 

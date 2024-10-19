@@ -1,6 +1,7 @@
 package goerr
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -21,18 +22,22 @@ func New(format string, args ...any) *Error {
 // Wrap creates a new Error and add message.
 func Wrap(cause error, msg ...any) *Error {
 	err := newError()
-
-	if len(msg) > 0 {
-		var newMsgs []string
-		for _, m := range msg {
-			newMsgs = append(newMsgs, fmt.Sprintf("%v", m))
-		}
-		err.msg = strings.Join(newMsgs, " ")
-	}
-
+	err.msg = toWrapMessage(msg...)
 	err.cause = cause
 
 	return err
+}
+
+func toWrapMessage(msg ...any) string {
+	if len(msg) == 0 {
+		return ""
+	}
+
+	var newMsgs []string
+	for _, m := range msg {
+		newMsgs = append(newMsgs, fmt.Sprintf("%v", m))
+	}
+	return strings.Join(newMsgs, " ")
 }
 
 // Wrapf creates a new Error and add message. The error message is formatted by fmt.Sprintf.
@@ -155,6 +160,21 @@ func (x *Error) Unwrap() error {
 // With adds key and value related to the error event
 func (x *Error) With(key string, value any) *Error {
 	x.values[key] = value
+	return x
+}
+
+// WithContext adds key and value related to the error event from context.Context
+func (x *Error) WithContext(ctx context.Context) *Error {
+	if ctx == nil {
+		return x
+	}
+
+	if errCtx, ok := ctx.Value(errContextKey{}).(*errContext); ok {
+		for k, v := range errCtx.values {
+			x.values[k] = v
+		}
+	}
+
 	return x
 }
 

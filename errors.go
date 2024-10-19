@@ -18,18 +18,18 @@ func New(format string, args ...any) *Error {
 	return err
 }
 
+func toWrapMessage(msgs []any) string {
+	var newMsgs []string
+	for _, m := range msgs {
+		newMsgs = append(newMsgs, fmt.Sprintf("%v", m))
+	}
+	return strings.Join(newMsgs, " ")
+}
+
 // Wrap creates a new Error and add message.
 func Wrap(cause error, msg ...any) *Error {
 	err := newError()
-
-	if len(msg) > 0 {
-		var newMsgs []string
-		for _, m := range msg {
-			newMsgs = append(newMsgs, fmt.Sprintf("%v", m))
-		}
-		err.msg = strings.Join(newMsgs, " ")
-	}
-
+	err.msg = toWrapMessage(msg)
 	err.cause = cause
 
 	return err
@@ -56,19 +56,29 @@ func Unwrap(err error) *Error {
 	return nil
 }
 
+type values map[string]any
+
+func (x values) clone() values {
+	newValues := make(values)
+	for key, value := range x {
+		newValues[key] = value
+	}
+	return newValues
+}
+
 // Error is error interface for deepalert to handle related variables
 type Error struct {
 	msg    string
 	id     string
 	st     *stack
 	cause  error
-	values map[string]any
+	values values
 }
 
 func newError() *Error {
 	return &Error{
 		st:     callers(),
-		values: make(map[string]any),
+		values: make(values),
 		id:     uuid.New().String(),
 	}
 }

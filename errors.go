@@ -295,11 +295,9 @@ func (x *Error) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 		got := false
 		if inCause := x.Unwrap(); inCause != nil {
 			if err, ok := inCause.(*Error); ok {
-				if err := err.MarshalLogObject(enc); err != nil {
-					return err
-				}
+				enc.AddObject("cause", err)
+				got = true
 			}
-			got = true
 		}
 		if !got {
 			enc.AddString("cause", x.cause.Error())

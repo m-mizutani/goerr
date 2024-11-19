@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
+	"go.uber.org/zap/zapcore"
 )
 
 // New creates a new error with message
@@ -261,4 +262,48 @@ func (x *Error) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(attrs...)
+}
+
+func (x *Error) MarshalLogObject(enc zapcore.ObjectEncoder) error {
+	if x == nil {
+		enc.AddString("message", "<nil>")
+		return nil
+	}
+	enc.AddString("message", x.msg)
+	enc.AddArray("values", zapcore.ArrayMarshalerFunc(func(inner zapcore.ArrayEncoder) error {
+		for k, v := range x.values {
+			inner.AppendObject(zapcore.ObjectMarshalerFunc(func(enc zapcore.ObjectEncoder) error {
+				enc.AddString("key", k)
+				enc.AddReflected("value", v)
+				return nil
+			}))
+		}
+		return nil
+	}))
+	var traces []string
+	for _, st := range x.StackTrace() {
+		traces = append(traces, fmt.Sprintf("%s:%d %s", st.file(), st.line(), st.name()))
+	}
+	enc.AddArray("stacktrace", zapcore.ArrayMarshalerFunc(func(inner zapcore.ArrayEncoder) error {
+		for _, st := range traces {
+			inner.AppendString(st)
+		}
+		return nil
+	}))
+
+	if x.cause != nil {
+		got := false
+		if inCause := x.Unwrap(); inCause != nil {
+			if err, ok := inCause.(*Error); ok {
+				if err := err.MarshalLogObject(enc); err != nil {
+					return err
+				}
+			}
+			got = true
+		}
+		if !got {
+			enc.AddString("cause", x.cause.Error())
+		}
+	}
+	return nil
 }

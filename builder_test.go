@@ -3,7 +3,7 @@ package goerr_test
 import (
 	"testing"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/abyssparanoia/goerr"
 )
 
 func newErrorWithBuilder() *goerr.Error {

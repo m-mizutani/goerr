@@ -1,4 +1,4 @@
-module github.com/m-mizutani/goerr
+module github.com/abyssparanoia/goerr
 
 go 1.21
 

@@ -74,6 +74,7 @@ type Error struct {
 	st       *stack
 	cause    error
 	values   values
+	code     string
 	category string
 	detail   string
 }
@@ -104,6 +105,7 @@ func (x *Error) Printable() *printable {
 		StackTrace: x.Stacks(),
 		Cause:      x.cause,
 		Values:     make(map[string]any),
+		Code:       x.code,
 		Category:   x.category,
 		Detail:     x.detail,
 	}
@@ -119,6 +121,7 @@ type printable struct {
 	StackTrace []*Stack       `json:"stacktrace"`
 	Cause      error          `json:"cause"`
 	Values     map[string]any `json:"values"`
+	Code       string         `json:"code"`
 	Category   string         `json:"category"`
 	Detail     string         `json:"detail"`
 }
@@ -234,6 +237,15 @@ func (x *Error) Values() map[string]any {
 	return values
 }
 
+func (x *Error) Code() string {
+	return x.code
+}
+
+func (x *Error) WithCode(code string) *Error {
+	x.code = code
+	return x
+}
+
 func (x *Error) Category() string {
 	return x.category
 }
@@ -259,6 +271,9 @@ func (x *Error) LogValue() slog.Value {
 
 	attrs := []slog.Attr{
 		slog.String("message", x.msg),
+	}
+	if x.code != "" {
+		attrs = append(attrs, slog.String("code", x.code))
 	}
 	if x.category != "" {
 		attrs = append(attrs, slog.String("category", x.category))
@@ -300,6 +315,9 @@ func (x *Error) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 		return nil
 	}
 	enc.AddString("message", x.msg)
+	if x.code != "" {
+		enc.AddString("code", x.code)
+	}
 	if x.category != "" {
 		enc.AddString("category", x.category)
 	}

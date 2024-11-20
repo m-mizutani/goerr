@@ -260,6 +260,12 @@ func (x *Error) LogValue() slog.Value {
 	attrs := []slog.Attr{
 		slog.String("message", x.msg),
 	}
+	if x.category != "" {
+		attrs = append(attrs, slog.String("category", x.category))
+	}
+	if x.detail != "" {
+		attrs = append(attrs, slog.String("detail", x.detail))
+	}
 	var values []any
 	for k, v := range x.values {
 		values = append(values, slog.Any(k, v))
@@ -274,13 +280,6 @@ func (x *Error) LogValue() slog.Value {
 	stacktrace = traces
 
 	attrs = append(attrs, slog.Any("stacktrace", stacktrace))
-
-	if x.category != "" {
-		attrs = append(attrs, slog.String("category", x.category))
-	}
-	if x.detail != "" {
-		attrs = append(attrs, slog.String("detail", x.detail))
-	}
 
 	if x.cause != nil {
 		var errAttr slog.Attr
@@ -301,6 +300,12 @@ func (x *Error) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 		return nil
 	}
 	enc.AddString("message", x.msg)
+	if x.category != "" {
+		enc.AddString("category", x.category)
+	}
+	if x.detail != "" {
+		enc.AddString("detail", x.detail)
+	}
 	enc.AddArray("values", zapcore.ArrayMarshalerFunc(func(inner zapcore.ArrayEncoder) error {
 		for k, v := range x.values {
 			inner.AppendObject(zapcore.ObjectMarshalerFunc(func(enc zapcore.ObjectEncoder) error {
@@ -321,13 +326,6 @@ func (x *Error) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 		}
 		return nil
 	}))
-
-	if x.category != "" {
-		enc.AddString("category", x.category)
-	}
-	if x.detail != "" {
-		enc.AddString("detail", x.detail)
-	}
 
 	if x.cause != nil {
 		got := false

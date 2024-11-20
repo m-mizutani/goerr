@@ -9,7 +9,7 @@ Package `goerr` provides more contextual error handling in Go.
 - Stack traces
   - Compatible with `github.com/pkg/errors`.
   - Structured stack traces with `goerr.Stack` is available.
-- Contextual variables to errors using `With(key, value)`.
+- Contextual variables to errors using `WithValue(key, value)`.
 - `errors.Is` to identify errors and `errors.As` to unwrap errors.
 - `slog.LogValuer` interface to output structured logs with `slog`.
 
@@ -35,6 +35,7 @@ func main() {
 ```
 
 Output:
+
 ```
 2024/04/06 10:30:27 failed to open file: open no_such_file.txt: no such file or directory
 main.someAction
@@ -86,8 +87,7 @@ if err := someAction("no_such_file.txt"); err != nil {
 
 ### Add/Extract contextual variables
 
-
-`goerr` provides the `With(key, value)` method to add contextual variables to errors. The standard way to handle errors in Go is by injecting values into error messages. However, this approach makes it difficult to aggregate various errors. On the other hand, `goerr`'s `With` method allows for adding contextual information to errors without changing error message, making it easier to aggregate error logs. Additionally, error handling services like Sentry.io can handle errors more accurately with this feature.
+`goerr` provides the `WithValue(key, value)` method to add contextual variables to errors. The standard way to handle errors in Go is by injecting values into error messages. However, this approach makes it difficult to aggregate various errors. On the other hand, `goerr`'s `With` method allows for adding contextual information to errors without changing error message, making it easier to aggregate error logs. Additionally, error handling services like Sentry.io can handle errors more accurately with this feature.
 
 ```go
 var errFormatMismatch = errors.New("format mismatch")
@@ -95,7 +95,7 @@ var errFormatMismatch = errors.New("format mismatch")
 func someAction(tasks []task) error {
 	for _, t := range tasks {
 		if err := validateData(t.Data); err != nil {
-			return goerr.Wrap(err, "failed to validate data").With("name", t.Name)
+			return goerr.Wrap(err, "failed to validate data").WithValue("name", t.Name)
 		}
 	}
 	// ....
@@ -104,7 +104,7 @@ func someAction(tasks []task) error {
 
 func validateData(data string) error {
 	if !strings.HasPrefix(data, "data:") {
-		return goerr.Wrap(errFormatMismatch).With("data", data)
+		return goerr.Wrap(errFormatMismatch).WithValue("data", data)
 	}
 	return nil
 }
@@ -132,6 +132,7 @@ func main() {
 ```
 
 Output:
+
 ```
 2024/04/06 14:40:59 var: data => invalid
 2024/04/06 14:40:59 var: name => task2
@@ -170,7 +171,7 @@ func someAction(input string) error {
 
 func validate(input string) error {
 	if input != "OK" {
-		return goerr.Wrap(errRuntime, "invalid input").With("input", input)
+		return goerr.Wrap(errRuntime, "invalid input").WithValue("input", input)
 	}
 	return nil
 }
@@ -184,6 +185,7 @@ func main() {
 ```
 
 Output:
+
 ```json
 {
   "time": "2024-04-06T11:32:40.350873+09:00",
@@ -226,7 +228,7 @@ type object struct {
 }
 
 func (o *object) Validate() error {
-	eb := goerr.NewBuilder().With("id", o.id)
+	eb := goerr.NewBuilder().WithValue("id", o.id)
 
 	if o.color == "" {
 		return eb.New("color is empty")
@@ -245,6 +247,7 @@ func main() {
 ```
 
 Output:
+
 ```
 2024/10/19 14:19:54 ERROR Validation error err.message="color is empty" err.values.id=object-1 (snip)
 ```

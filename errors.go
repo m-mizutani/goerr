@@ -94,6 +94,9 @@ func (x *Error) copy(dst *Error) {
 	for k, v := range x.values {
 		dst.values[k] = v
 	}
+	dst.code = x.code
+	dst.category = x.category
+	dst.detail = x.detail
 	// st (stacktrace) is not copied
 }
 
@@ -173,7 +176,7 @@ func (x *Error) Unwrap() error {
 }
 
 // With adds key and value related to the error event
-func (x *Error) With(key string, value any) *Error {
+func (x *Error) WithValue(key string, value any) *Error {
 	x.values[key] = value
 	return x
 }

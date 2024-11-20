@@ -11,7 +11,7 @@ var errInvalidInput = errors.New("invalid input")
 
 func someAction(input string) error {
 	if input != "OK" {
-		return goerr.Wrap(errInvalidInput, "input is not OK").With("input", input)
+		return goerr.Wrap(errInvalidInput, "input is not OK").WithValue("input", input)
 	}
 	// .....
 	return nil

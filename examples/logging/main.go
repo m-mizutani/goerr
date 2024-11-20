@@ -20,7 +20,7 @@ func someAction(input string) error {
 
 func validate(input string) error {
 	if input != "OK" {
-		return goerr.Wrap(errRuntime, "invalid input").With("input", input)
+		return goerr.Wrap(errRuntime, "invalid input").WithValue("input", input)
 	}
 	return nil
 }

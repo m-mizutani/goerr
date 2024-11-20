@@ -10,7 +10,7 @@ import (
 
 func someAction(input string) error {
 	if input != "OK" {
-		return goerr.New("input is not OK").With("input", input).With("time", time.Now())
+		return goerr.New("input is not OK").WithValue("input", input).WithValue("time", time.Now())
 	}
 	return nil
 }

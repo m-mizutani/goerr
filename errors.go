@@ -69,11 +69,13 @@ func (x values) clone() values {
 
 // Error is error interface for deepalert to handle related variables
 type Error struct {
-	msg    string
-	id     string
-	st     *stack
-	cause  error
-	values values
+	msg      string
+	id       string
+	st       *stack
+	cause    error
+	values   values
+	category string
+	detail   string
 }
 
 func newError() *Error {
@@ -102,6 +104,8 @@ func (x *Error) Printable() *printable {
 		StackTrace: x.Stacks(),
 		Cause:      x.cause,
 		Values:     make(map[string]any),
+		Category:   x.category,
+		Detail:     x.detail,
 	}
 	for k, v := range x.values {
 		e.Values[k] = v
@@ -115,6 +119,8 @@ type printable struct {
 	StackTrace []*Stack       `json:"stacktrace"`
 	Cause      error          `json:"cause"`
 	Values     map[string]any `json:"values"`
+	Category   string         `json:"category"`
+	Detail     string         `json:"detail"`
 }
 
 // Error returns error message for error interface
@@ -228,6 +234,24 @@ func (x *Error) Values() map[string]any {
 	return values
 }
 
+func (x *Error) Category() string {
+	return x.category
+}
+
+func (x *Error) WithCategory(category string) *Error {
+	x.category = category
+	return x
+}
+
+func (x *Error) Detail() string {
+	return x.detail
+}
+
+func (x *Error) WithDetail(detail string) *Error {
+	x.detail = detail
+	return x
+}
+
 func (x *Error) LogValue() slog.Value {
 	if x == nil {
 		return slog.AnyValue(nil)
@@ -250,6 +274,13 @@ func (x *Error) LogValue() slog.Value {
 	stacktrace = traces
 
 	attrs = append(attrs, slog.Any("stacktrace", stacktrace))
+
+	if x.category != "" {
+		attrs = append(attrs, slog.String("category", x.category))
+	}
+	if x.detail != "" {
+		attrs = append(attrs, slog.String("detail", x.detail))
+	}
 
 	if x.cause != nil {
 		var errAttr slog.Attr
@@ -290,6 +321,13 @@ func (x *Error) MarshalLogObject(enc zapcore.ObjectEncoder) error {
 		}
 		return nil
 	}))
+
+	if x.category != "" {
+		enc.AddString("category", x.category)
+	}
+	if x.detail != "" {
+		enc.AddString("detail", x.detail)
+	}
 
 	if x.cause != nil {
 		got := false

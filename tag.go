@@ -58,7 +58,7 @@ func (t Tag) String() string {
 
 // Format writes the Tag to the writer. It's for implementing fmt.Formatter interface.
 func (t Tag) Format(s fmt.State, verb rune) {
-	io.WriteString(s, t.value)
+	_, _ = io.WriteString(s, t.value)
 }
 
 // WithTags adds tags to the error. The tags are used to categorize errors.

@@ -73,6 +73,7 @@ type Error struct {
 	st     *stack
 	cause  error
 	values values
+	tags   tagStorage
 }
 
 func newError() *Error {
@@ -80,6 +81,7 @@ func newError() *Error {
 		st:     callers(),
 		values: make(values),
 		id:     uuid.New().String(),
+		tags:   newTagStorage(),
 	}
 }
 

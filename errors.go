@@ -232,6 +232,8 @@ func (x *Error) Values() map[string]any {
 	return values
 }
 
+// LogValue returns slog.Value for structured logging. It's implementation of slog.LogValuer.
+// https://pkg.go.dev/log/slog#LogValuer
 func (x *Error) LogValue() slog.Value {
 	if x == nil {
 		return slog.AnyValue(nil)

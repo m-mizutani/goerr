@@ -244,3 +244,51 @@ func TestUnstack(t *testing.T) {
 		}
 	})
 }
+
+func sliceHas(s []string, target string) bool {
+	for _, v := range s {
+		if v == target {
+			return true
+		}
+	}
+	return false
+}
+
+func TestTags(t *testing.T) {
+	t1 := goerr.NewTag("tag1")
+	t2 := goerr.NewTag("tag2")
+
+	err1 := goerr.New("omg").WithTags(t1)
+	err2 := fmt.Errorf("oops: %w", err1)
+	err3 := goerr.Wrap(err2, "orange").WithTags(t2)
+	err4 := fmt.Errorf("oh no: %w", err3)
+
+	tags := goerr.Tags(err4)
+	if len(tags) != 2 {
+		t.Errorf("Expected tags length to be 2, got %d", len(tags))
+	}
+	if !sliceHas(tags, "tag1") {
+		t.Error("Expected tags to contain 'tag1'")
+	}
+	if !sliceHas(tags, "tag2") {
+		t.Error("Expected tags to contain 'tag2'")
+	}
+}
+
+func TestValues(t *testing.T) {
+	err1 := goerr.New("omg").With("color", "blue")
+	err2 := fmt.Errorf("oops: %w", err1)
+	err3 := goerr.Wrap(err2, "red").With("number", "five")
+	err4 := fmt.Errorf("oh no: %w", err3)
+
+	values := goerr.Values(err4)
+	if len(values) != 2 {
+		t.Errorf("Expected values length to be 2, got %d", len(values))
+	}
+	if values["color"] != "blue" {
+		t.Errorf("Expected value for 'color' to be 'blue', got '%v'", values["color"])
+	}
+	if values["number"] != "five" {
+		t.Errorf("Expected value for 'number' to be 'five', got '%v'", values["number"])
+	}
+}

@@ -56,6 +56,24 @@ func Unwrap(err error) *Error {
 	return nil
 }
 
+// Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
+func Values(err error) map[string]any {
+	if e := Unwrap(err); e != nil {
+		return e.Values()
+	}
+
+	return nil
+}
+
+// Tags returns list of tags that is set by WithTags. All wrapped goerr.Error tags will be merged. Tags of wrapped error is overwritten by upper goerr.Error.
+func Tags(err error) []string {
+	if e := Unwrap(err); e != nil {
+		return e.Tags()
+	}
+
+	return nil
+}
+
 type values map[string]any
 
 func (x values) clone() values {
@@ -213,23 +231,61 @@ func (x *Error) Wrap(cause error) *Error {
 
 // Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
 func (x *Error) Values() map[string]any {
-	var values map[string]any
-
-	if cause := x.Unwrap(); cause != nil {
-		if err, ok := cause.(*Error); ok {
-			values = err.Values()
-		}
-	}
-
-	if values == nil {
-		values = make(map[string]any)
-	}
+	values := x.mergedValues()
 
 	for key, value := range x.values {
 		values[key] = value
 	}
 
 	return values
+}
+
+func (x *Error) mergedValues() values {
+	merged := make(values)
+
+	if cause := x.Unwrap(); cause != nil {
+		if err := Unwrap(cause); err != nil {
+			merged = err.mergedValues()
+		}
+	}
+
+	for key, value := range x.values {
+		merged[key] = value
+	}
+
+	return merged
+}
+
+// Tags returns list of tags that is set by WithTags. All wrapped goerr.Error tags will be merged. Tags of wrapped error is overwritten by upper goerr.Error.
+func (x *Error) Tags() []string {
+	tags := x.mergedTags()
+
+	for tag := range x.tags {
+		tags[tag] = struct{}{}
+	}
+
+	tagList := make([]string, 0, len(tags))
+	for tag := range tags {
+		tagList = append(tagList, tag.value)
+	}
+
+	return tagList
+}
+
+func (x *Error) mergedTags() tags {
+	merged := make(tags)
+
+	if cause := x.Unwrap(); cause != nil {
+		if err := Unwrap(cause); err != nil {
+			merged = err.mergedTags()
+		}
+	}
+
+	for tag := range x.tags {
+		merged[tag] = struct{}{}
+	}
+
+	return merged
 }
 
 // LogValue returns slog.Value for structured logging. It's implementation of slog.LogValuer.

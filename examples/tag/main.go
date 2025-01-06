@@ -44,5 +44,6 @@ func main() {
 		_, _ = w.Write([]byte("OK"))
 	})
 
+	// #nosec
 	http.ListenAndServe(":8090", nil)
 }

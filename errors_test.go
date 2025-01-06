@@ -107,7 +107,7 @@ func TestErrorCode(t *testing.T) {
 	}
 }
 
-func TestPrintable(t *testing.T) {
+func TestPrintableWithGoErr(t *testing.T) {
 	cause := errors.New("test")
 	err := goerr.Wrap(cause, "oops").ID("E001").With("blue", "five")
 
@@ -118,8 +118,31 @@ func TestPrintable(t *testing.T) {
 	if p.ID != "E001" {
 		t.Errorf("Expected ID to be 'E001', got '%s'", p.ID)
 	}
-	if p.Cause != cause {
-		t.Errorf("Expected cause to be '%v', got '%v'", cause, p.Cause)
+	if s, ok := p.Cause.(string); !ok {
+		t.Errorf("Expected cause is string, got '%t'", p.Cause)
+	} else if s != "test" {
+		t.Errorf("Expected message is 'test', got '%s'", s)
+	}
+	if p.Values["blue"] != "five" {
+		t.Errorf("Expected value for 'blue' to be 'five', got '%v'", p.Values["blue"])
+	}
+}
+
+func TestPrintableWithError(t *testing.T) {
+	cause := goerr.New("test")
+	err := goerr.Wrap(cause, "oops").ID("E001").With("blue", "five")
+
+	p := err.Printable()
+	if p.Message != "oops" {
+		t.Errorf("Expected message to be 'oops', got '%s'", p.Message)
+	}
+	if p.ID != "E001" {
+		t.Errorf("Expected ID to be 'E001', got '%s'", p.ID)
+	}
+	if cp, ok := p.Cause.(*goerr.Printable); !ok {
+		t.Errorf("Expected cause is goerr.Printable, got '%t'", p.Cause)
+	} else if cp.Message != "test" {
+		t.Errorf("Expected message is 'test', got '%s'", cp.Message)
 	}
 	if p.Values["blue"] != "five" {
 		t.Errorf("Expected value for 'blue' to be 'five', got '%v'", p.Values["blue"])

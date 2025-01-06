@@ -2,6 +2,7 @@ package goerr_test
 
 import (
 	"fmt"
+	"testing"
 
 	"github.com/m-mizutani/goerr"
 )
@@ -18,21 +19,41 @@ func ExampleNewTag() {
 	// Output: DB error
 }
 
-func ExampleNewTagWithKey() {
-	k1 := goerr.NewTagKey("http")
-	tagNotFound := goerr.NewTagWithKey(k1, "404")
-	tagUnauthorized := goerr.NewTagWithKey(k1, "401")
-	err := goerr.New("resource not found").WithTags(tagNotFound)
+func TestNewTag(t *testing.T) {
+	tagValue := "test_tag"
+	tag := goerr.NewTag(tagValue)
+
+	if tag.String() != tagValue {
+		t.Errorf("expected tag value to be %s, got %s", tagValue, tag.String())
+	}
+}
+
+func TestWithTags(t *testing.T) {
+	tag1 := goerr.NewTag("tag1")
+	tag2 := goerr.NewTag("tag2")
+	tag3 := goerr.NewTag("tag3")
+	err := goerr.New("error message").WithTags(tag1, tag2)
 
 	if goErr := goerr.Unwrap(err); goErr != nil {
-		switch tag, ok := goErr.LookupTag(k1); {
-		case ok && tag == tagNotFound:
-			fmt.Println("not found")
-		case ok && tag == tagUnauthorized:
-			fmt.Println("unauthorized")
-		default:
-			fmt.Println("unknown")
+		if !goErr.HasTag(tag1) {
+			t.Errorf("expected error to have tag1")
+		}
+		if !goErr.HasTag(tag2) {
+			t.Errorf("expected error to have tag2")
+		}
+		if goErr.HasTag(tag3) {
+			t.Errorf("expected error to not have tag3")
 		}
 	}
-	// Output: not found
+}
+
+func TestHasTag(t *testing.T) {
+	tag := goerr.NewTag("test_tag")
+	err := goerr.New("error message").WithTags(tag)
+
+	if goErr := goerr.Unwrap(err); goErr != nil {
+		if !goErr.HasTag(tag) {
+			t.Errorf("expected error to have tag")
+		}
+	}
 }

@@ -73,6 +73,7 @@ type Error struct {
 	st     *stack
 	cause  error
 	values values
+	tags   tags
 }
 
 func newError() *Error {
@@ -80,6 +81,7 @@ func newError() *Error {
 		st:     callers(),
 		values: make(values),
 		id:     uuid.New().String(),
+		tags:   make(tags),
 	}
 }
 
@@ -87,9 +89,8 @@ func (x *Error) copy(dst *Error) {
 	dst.msg = x.msg
 	dst.id = x.id
 	dst.cause = x.cause
-	for k, v := range x.values {
-		dst.values[k] = v
-	}
+	dst.tags = x.tags.clone()
+	dst.values = x.values.clone()
 	// st (stacktrace) is not copied
 }
 
@@ -103,6 +104,9 @@ func (x *Error) Printable() *Printable {
 	}
 	for k, v := range x.values {
 		e.Values[k] = v
+	}
+	for tag := range x.tags {
+		e.Tags = append(e.Tags, tag.value)
 	}
 
 	if cause := Unwrap(x.cause); cause != nil {
@@ -119,6 +123,7 @@ type Printable struct {
 	StackTrace []*Stack       `json:"stacktrace"`
 	Cause      any            `json:"cause"`
 	Values     map[string]any `json:"values"`
+	Tags       []string       `json:"tags"`
 }
 
 // Error returns error message for error interface

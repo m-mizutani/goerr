@@ -95,12 +95,11 @@ func (x *Error) copy(dst *Error) {
 }
 
 // Printable returns printable object
-func (x *Error) Printable() *printable {
-	e := &printable{
+func (x *Error) Printable() *Printable {
+	e := &Printable{
 		Message:    x.msg,
 		ID:         x.id,
 		StackTrace: x.Stacks(),
-		Cause:      x.cause,
 		Values:     make(map[string]any),
 	}
 	for k, v := range x.values {
@@ -109,30 +108,31 @@ func (x *Error) Printable() *printable {
 	for tag := range x.tags {
 		e.Tags = append(e.Tags, tag.value)
 	}
+
+	if cause := Unwrap(x.cause); cause != nil {
+		e.Cause = cause.Printable()
+	} else if x.cause != nil {
+		e.Cause = x.cause.Error()
+	}
 	return e
 }
 
-type printable struct {
+type Printable struct {
 	Message    string         `json:"message"`
 	ID         string         `json:"id"`
 	StackTrace []*Stack       `json:"stacktrace"`
-	Cause      error          `json:"cause"`
+	Cause      any            `json:"cause"`
 	Values     map[string]any `json:"values"`
 	Tags       []string       `json:"tags"`
 }
 
 // Error returns error message for error interface
 func (x *Error) Error() string {
-	s := x.msg
-	cause := x.cause
-
-	if cause == nil {
-		return s
+	if x.cause == nil {
+		return x.msg
 	}
 
-	s = fmt.Sprintf("%s: %v", s, cause.Error())
-
-	return s
+	return fmt.Sprintf("%s: %v", x.msg, x.cause.Error())
 }
 
 // Format returns:

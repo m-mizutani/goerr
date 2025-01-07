@@ -14,7 +14,7 @@ import (
 //	func FindUser(id string) (*User, error) {
 //		...
 //		if user == nil {
-//			return nil, goerr.New("user not found").WithTags(TagNotFound)
+//			return nil, goerr.New("user not found", goerr.Tag(TagNotFound))
 //		}
 //		...
 //	}
@@ -27,27 +27,29 @@ import (
 //			}
 //		}
 //	}
-type Tag struct {
+type tag struct {
 	value string
 }
 
 // NewTag creates a new Tag. The key will be empty.
-func NewTag(value string) Tag {
-	return Tag{value: value}
+func NewTag(value string) tag {
+	return tag{value: value}
 }
 
 // String returns the string representation of the Tag. It's for implementing fmt.Stringer interface.
-func (t Tag) String() string {
+func (t tag) String() string {
 	return t.value
 }
 
 // Format writes the Tag to the writer. It's for implementing fmt.Formatter interface.
-func (t Tag) Format(s fmt.State, verb rune) {
+func (t tag) Format(s fmt.State, verb rune) {
 	_, _ = io.WriteString(s, t.value)
 }
 
 // WithTags adds tags to the error. The tags are used to categorize errors.
-func (x *Error) WithTags(tags ...Tag) *Error {
+//
+// Deprecated: Use goerr.Tag instead.
+func (x *Error) WithTags(tags ...tag) *Error {
 	for _, tag := range tags {
 		x.tags.add(tag)
 	}
@@ -55,17 +57,17 @@ func (x *Error) WithTags(tags ...Tag) *Error {
 }
 
 // HasTag returns true if the error has the tag.
-func (x *Error) HasTag(tag Tag) bool {
+func (x *Error) HasTag(tag tag) bool {
 	return x.tags.has(tag)
 }
 
-type tags map[Tag]struct{}
+type tags map[tag]struct{}
 
-func (t tags) add(tag Tag) {
+func (t tags) add(tag tag) {
 	t[tag] = struct{}{}
 }
 
-func (t tags) has(tag Tag) bool {
+func (t tags) has(tag tag) bool {
 	_, ok := t[tag]
 	return ok
 }

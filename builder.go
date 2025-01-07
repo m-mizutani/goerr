@@ -1,40 +1,39 @@
 package goerr
 
-import (
-	"fmt"
-)
-
 // Builder keeps a set of key-value pairs and can create a new error and wrap error with the key-value pairs.
 type Builder struct {
-	values values
+	options []Option
 }
 
 // NewBuilder creates a new Builder
-func NewBuilder() *Builder {
-	return &Builder{values: make(values)}
+func NewBuilder(options ...Option) *Builder {
+	return &Builder{
+		options: options,
+	}
 }
 
 // With copies the current Builder and adds a new key-value pair.
+//
+// Deprecated: Use goerr.Value instead.
 func (x *Builder) With(key string, value any) *Builder {
-	newVS := &Builder{values: x.values.clone()}
-	newVS.values[key] = value
-	return newVS
+	newBuilder := &Builder{
+		options: x.options[:],
+	}
+	newBuilder.options = append(newBuilder.options, Value(key, value))
+	return newBuilder
 }
 
 // New creates a new error with message
-func (x *Builder) New(format string, args ...any) *Error {
-	err := newError()
-	err.msg = fmt.Sprintf(format, args...)
-	err.values = x.values.clone()
-
+func (x *Builder) New(msg string, options ...Option) *Error {
+	err := newError(append(x.options, options...)...)
+	err.msg = msg
 	return err
 }
 
 // Wrap creates a new Error with caused error and add message.
-func (x *Builder) Wrap(cause error, msg ...any) *Error {
-	err := newError()
-	err.msg = toWrapMessage(msg)
+func (x *Builder) Wrap(cause error, msg string, options ...Option) *Error {
+	err := newError(append(x.options, options...)...)
+	err.msg = msg
 	err.cause = cause
-	err.values = x.values.clone()
 	return err
 }

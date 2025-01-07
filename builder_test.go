@@ -7,7 +7,7 @@ import (
 )
 
 func newErrorWithBuilder() *goerr.Error {
-	return goerr.NewBuilder().With("color", "orange").New("error")
+	return goerr.NewBuilder(goerr.V("color", "orange")).New("error")
 }
 
 func TestBuilderNew(t *testing.T) {
@@ -20,7 +20,7 @@ func TestBuilderNew(t *testing.T) {
 
 func TestBuilderWrap(t *testing.T) {
 	cause := goerr.New("cause")
-	err := goerr.NewBuilder().With("color", "blue").Wrap(cause, "error")
+	err := goerr.NewBuilder(goerr.V("color", "blue")).Wrap(cause, "error")
 
 	if err.Values()["color"] != "blue" {
 		t.Errorf("Unexpected value: %v", err.Values())

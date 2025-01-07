@@ -4,42 +4,51 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"strings"
 
 	"log/slog"
 
 	"github.com/google/uuid"
 )
 
-// New creates a new error with message
-func New(format string, args ...any) *Error {
-	err := newError()
-	err.msg = fmt.Sprintf(format, args...)
-	return err
+type Option func(*Error)
+
+// Value sets key and value to the error
+func Value(key string, value any) Option {
+	return func(err *Error) {
+		err.values[key] = value
+	}
 }
 
-func toWrapMessage(msgs []any) string {
-	var newMsgs []string
-	for _, m := range msgs {
-		newMsgs = append(newMsgs, fmt.Sprintf("%v", m))
+// V is alias of Value
+func V(key string, value any) Option {
+	return Value(key, value)
+}
+
+// Tag sets tag to the error
+func Tag(t tag) Option {
+	return func(err *Error) {
+		err.tags.add(t)
 	}
-	return strings.Join(newMsgs, " ")
+}
+
+// T is alias of Tag
+func T(t tag) Option {
+	return Tag(t)
+}
+
+// New creates a new error with message
+func New(msg string, options ...Option) *Error {
+	err := newError(options...)
+	err.msg = msg
+	return err
 }
 
 // Wrap creates a new Error and add message.
-func Wrap(cause error, msg ...any) *Error {
+func Wrap(cause error, msg string, options ...Option) *Error {
 	err := newError()
-	err.msg = toWrapMessage(msg)
+	err.msg = msg
 	err.cause = cause
 
-	return err
-}
-
-// Wrapf creates a new Error and add message. The error message is formatted by fmt.Sprintf.
-func Wrapf(cause error, format string, args ...any) *Error {
-	err := newError()
-	err.msg = fmt.Sprintf(format, args...)
-	err.cause = cause
 	return err
 }
 
@@ -94,13 +103,19 @@ type Error struct {
 	tags   tags
 }
 
-func newError() *Error {
-	return &Error{
+func newError(options ...Option) *Error {
+	e := &Error{
 		st:     callers(),
 		values: make(values),
 		id:     uuid.New().String(),
 		tags:   make(tags),
 	}
+
+	for _, opt := range options {
+		opt(e)
+	}
+
+	return e
 }
 
 func (x *Error) copy(dst *Error) {
@@ -186,6 +201,8 @@ func (x *Error) Unwrap() error {
 }
 
 // With adds key and value related to the error event
+//
+// Deprecated: Use goerr.Value instead.
 func (x *Error) With(key string, value any) *Error {
 	x.values[key] = value
 	return x

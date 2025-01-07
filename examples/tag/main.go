@@ -29,7 +29,7 @@ func handleError(w http.ResponseWriter, err error) {
 
 func someAction() error {
 	if _, err := http.Get("http://example.com/some/resource"); err != nil {
-		return goerr.Wrap(err, "failed to get some resource").WithTags(ErrTagSysError)
+		return goerr.Wrap(err, "failed to get some resource", goerr.T(ErrTagSysError))
 	}
 	return nil
 }

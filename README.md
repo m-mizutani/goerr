@@ -17,6 +17,12 @@ Package `goerr` provides more contextual error handling in Go.
 
 ## Usage
 
+You can install `goerr` by `go get`:
+
+```sh
+go get github.com/m-mizutani/goerr/v2
+```
+
 ### Stack trace
 
 `goerr` records stack trace when creating an error. The format is compatible with `github.com/pkg/errors` and it can be used for [sentry.io](https://sentry.io), etc.

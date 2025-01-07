@@ -298,11 +298,18 @@ func (x *Error) LogValue() slog.Value {
 	attrs := []slog.Attr{
 		slog.String("message", x.msg),
 	}
+
 	var values []any
 	for k, v := range x.values {
 		values = append(values, slog.Any(k, v))
 	}
 	attrs = append(attrs, slog.Group("values", values...))
+
+	var tags []string
+	for tag := range x.tags {
+		tags = append(tags, tag.value)
+	}
+	attrs = append(attrs, slog.Any("tags", tags))
 
 	var stacktrace any
 	var traces []string

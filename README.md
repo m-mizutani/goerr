@@ -86,6 +86,7 @@ if err := someAction("no_such_file.txt"); err != nil {
 
 ### Add/Extract contextual variables
 
+#### Key-Value pairs
 
 `goerr` provides the `With(key, value)` method to add contextual variables to errors. The standard way to handle errors in Go is by injecting values into error messages. However, this approach makes it difficult to aggregate various errors. On the other hand, `goerr`'s `With` method allows for adding contextual information to errors without changing error message, making it easier to aggregate error logs. Additionally, error handling services like Sentry.io can handle errors more accurately with this feature.
 
@@ -152,6 +153,55 @@ hub.ConfigureScope(func(scope *sentry.Scope) {
   }
 })
 evID := hub.CaptureException(err)
+```
+
+#### Tags
+
+There are use cases where we need to adjust the error handling strategy based on the nature of the error. A clear example is an HTTP server, where the status code to be returned varies depending on whether it's an error from a downstream system, a missing resource, or an unauthorized request. To handle this precisely, you could predefine errors for each type and use methods like `errors.Is` in the error handling section to verify and branch the processing accordingly. However, this approach becomes challenging as the program grows larger and the number and variety of errors increase.
+
+`goerr` provides also `WithTags(tags ...string)` method to add tags to errors. Tags are useful when you want to categorize errors. For example, you can add tags like "critical" or "warning" to errors.
+
+```go
+var (
+	ErrTagSysError   = goerr.NewTag("system_error")
+	ErrTagBadRequest = goerr.NewTag("bad_request")
+)
+
+func handleError(w http.ResponseWriter, err error) {
+	if goErr := goerr.Unwrap(err); goErr != nil {
+		switch {
+		case goErr.HasTag(ErrTagSysError):
+			w.WriteHeader(http.StatusInternalServerError)
+		case goErr.HasTag(ErrTagBadRequest):
+			w.WriteHeader(http.StatusBadRequest)
+		default:
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	} else {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	_, _ = w.Write([]byte(err.Error()))
+}
+
+func someAction() error {
+	if _, err := http.Get("http://example.com/some/resource"); err != nil {
+		return goerr.Wrap(err, "failed to get some resource").WithTags(ErrTagSysError)
+	}
+	return nil
+}
+
+func main() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if err := someAction(); err != nil {
+			handleError(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	})
+
+	http.ListenAndServe(":8090", nil)
+}
 ```
 
 ### Structured logging

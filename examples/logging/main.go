@@ -6,7 +6,7 @@ import (
 
 	"log/slog"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 var errRuntime = errors.New("runtime error")
@@ -20,7 +20,7 @@ func someAction(input string) error {
 
 func validate(input string) error {
 	if input != "OK" {
-		return goerr.Wrap(errRuntime, "invalid input").With("input", input)
+		return goerr.Wrap(errRuntime, "invalid input", goerr.V("input", input))
 	}
 	return nil
 }

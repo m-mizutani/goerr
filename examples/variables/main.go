@@ -5,7 +5,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 var errFormatMismatch = errors.New("format mismatch")
@@ -13,7 +13,7 @@ var errFormatMismatch = errors.New("format mismatch")
 func someAction(tasks []task) error {
 	for _, t := range tasks {
 		if err := validateData(t.Data); err != nil {
-			return goerr.Wrap(err, "failed to validate data").With("name", t.Name)
+			return goerr.Wrap(err, "failed to validate data", goerr.Value("name", t.Name))
 		}
 	}
 	// ....
@@ -22,7 +22,7 @@ func someAction(tasks []task) error {
 
 func validateData(data string) error {
 	if !strings.HasPrefix(data, "data:") {
-		return goerr.Wrap(errFormatMismatch).With("data", data)
+		return goerr.Wrap(errFormatMismatch, "validation error", goerr.V("data", data))
 	}
 	return nil
 }

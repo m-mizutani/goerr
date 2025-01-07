@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 func nestedAction2() error {

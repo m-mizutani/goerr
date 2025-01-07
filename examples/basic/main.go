@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 func someAction(input string) error {

@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 func someAction(fname string) error {

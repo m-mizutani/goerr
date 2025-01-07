@@ -4,7 +4,7 @@ import (
 	"errors"
 	"log"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 var errInvalidInput = errors.New("invalid input")

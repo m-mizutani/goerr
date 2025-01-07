@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 func ExampleNewTag() {

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 func oops() *goerr.Error {
@@ -28,8 +28,8 @@ func wrapError() *goerr.Error {
 func TestNew(t *testing.T) {
 	err := oops()
 	v := fmt.Sprintf("%+v", err)
-	if !strings.Contains(v, "goerr_test.oops") {
-		t.Error("Stack trace 'goerr_test.oops' is not found")
+	if !strings.Contains(v, "goerr/v2_test.oops") {
+		t.Error("Stack trace 'goerr/v2_test.oops' is not found")
 	}
 	if !strings.Contains(err.Error(), "omg") {
 		t.Error("Error message is not correct")
@@ -39,13 +39,13 @@ func TestNew(t *testing.T) {
 func TestWrapError(t *testing.T) {
 	err := wrapError()
 	st := fmt.Sprintf("%+v", err)
-	if !strings.Contains(st, "github.com/m-mizutani/goerr_test.wrapError") {
+	if !strings.Contains(st, "github.com/m-mizutani/goerr/v2_test.wrapError") {
 		t.Error("Stack trace 'wrapError' is not found")
 	}
-	if !strings.Contains(st, "github.com/m-mizutani/goerr_test.TestWrapError") {
+	if !strings.Contains(st, "github.com/m-mizutani/goerr/v2_test.TestWrapError") {
 		t.Error("Stack trace 'TestWrapError' is not found")
 	}
-	if strings.Contains(st, "github.com/m-mizutani/goerr_test.normalError") {
+	if strings.Contains(st, "github.com/m-mizutani/goerr/v2_test.normalError") {
 		t.Error("Stack trace 'normalError' is found")
 	}
 	if !strings.Contains(err.Error(), "orange: red") {
@@ -59,8 +59,8 @@ func TestStackTrace(t *testing.T) {
 	if len(st) != 4 {
 		t.Errorf("Expected stack length of 4, got %d", len(st))
 	}
-	if st[0].Func != "github.com/m-mizutani/goerr_test.oops" {
-		t.Error("Stack trace 'github.com/m-mizutani/goerr_test.oops' is not found")
+	if st[0].Func != "github.com/m-mizutani/goerr/v2_test.oops" {
+		t.Error("Stack trace 'github.com/m-mizutani/goerr/v2_test.oops' is not found")
 	}
 	if !regexp.MustCompile(`/goerr/errors_test\.go$`).MatchString(st[0].File) {
 		t.Error("Stack trace file is not correct")
@@ -211,8 +211,8 @@ func TestUnstack(t *testing.T) {
 		if len(st) == 0 {
 			t.Error("Expected stack trace length to be 0")
 		}
-		if st[0].Func != "github.com/m-mizutani/goerr_test.oops" {
-			t.Errorf("Not expected stack trace func name (github.com/m-mizutani/goerr_test.oops): %s", st[0].Func)
+		if st[0].Func != "github.com/m-mizutani/goerr/v2_test.oops" {
+			t.Errorf("Not expected stack trace func name (github.com/m-mizutani/goerr/v2_test.oops): %s", st[0].Func)
 		}
 	})
 
@@ -225,8 +225,8 @@ func TestUnstack(t *testing.T) {
 		if len(st1) == 0 {
 			t.Error("Expected stack trace length to be non-zero")
 		}
-		if st1[0].Func != "github.com/m-mizutani/goerr_test.TestUnstack.func2" {
-			t.Errorf("Not expected stack trace func name (github.com/m-mizutani/goerr_test.TestUnstack.func2): %s", st1[0].Func)
+		if st1[0].Func != "github.com/m-mizutani/goerr/v2_test.TestUnstack.func2" {
+			t.Errorf("Not expected stack trace func name (github.com/m-mizutani/goerr/v2_test.TestUnstack.func2): %s", st1[0].Func)
 		}
 	})
 

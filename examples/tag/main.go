@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/m-mizutani/goerr"
+	"github.com/m-mizutani/goerr/v2"
 )
 
 var (

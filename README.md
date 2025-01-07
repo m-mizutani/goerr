@@ -9,7 +9,7 @@ Package `goerr` provides more contextual error handling in Go.
 - Stack traces
   - Compatible with `github.com/pkg/errors`.
   - Structured stack traces with `goerr.Stack` is available.
-- Contextual variables to errors using `With(key, value)`.
+- Contextual variables to errors using `With(key, value)` and `WithTags(tags ...Tag)`.
 - `errors.Is` to identify errors and `errors.As` to unwrap errors.
 - `slog.LogValuer` interface to output structured logs with `slog`.
 

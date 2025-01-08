@@ -152,7 +152,7 @@ func TestErrorCode(t *testing.T) {
 	baseErr1 := goerr.New("oops").ID("code1")
 	baseErr2 := goerr.New("oops").ID("code2")
 
-	newErr := baseErr1.Wrap(rootErr).With("v", 1)
+	newErr := baseErr1.Wrap(rootErr, goerr.V("v", 1))
 
 	if !errors.Is(newErr, baseErr1) {
 		t.Error("Expected newErr to be based on baseErr1")
@@ -173,7 +173,7 @@ func TestErrorCode(t *testing.T) {
 
 func TestPrintableWithGoErr(t *testing.T) {
 	cause := errors.New("test")
-	err := goerr.Wrap(cause, "oops").ID("E001").With("blue", "five")
+	err := goerr.Wrap(cause, "oops", goerr.V("blue", "five")).ID("E001")
 
 	p := err.Printable()
 	if p.Message != "oops" {
@@ -194,7 +194,7 @@ func TestPrintableWithGoErr(t *testing.T) {
 
 func TestPrintableWithError(t *testing.T) {
 	cause := goerr.New("test")
-	err := goerr.Wrap(cause, "oops").ID("E001").With("blue", "five")
+	err := goerr.Wrap(cause, "oops", goerr.V("blue", "five")).ID("E001")
 
 	p := err.Printable()
 	if p.Message != "oops" {
@@ -214,7 +214,7 @@ func TestPrintableWithError(t *testing.T) {
 }
 
 func TestUnwrap(t *testing.T) {
-	err1 := goerr.New("omg").With("color", "five")
+	err1 := goerr.New("omg", goerr.V("color", "five"))
 	err2 := fmt.Errorf("oops: %w", err1)
 
 	err := goerr.Unwrap(err2)
@@ -235,8 +235,8 @@ func TestErrorString(t *testing.T) {
 }
 
 func TestLoggingNestedError(t *testing.T) {
-	err1 := goerr.New("e1").With("color", "orange")
-	err2 := goerr.Wrap(err1, "e2").With("number", "five")
+	err1 := goerr.New("e1", goerr.V("color", "orange"))
+	err2 := goerr.Wrap(err1, "e2", goerr.V("number", "five"))
 	out := &bytes.Buffer{}
 	logger := slog.New(slog.NewJSONHandler(out, nil))
 	logger.Error("fail", slog.Any("error", err2))
@@ -333,9 +333,9 @@ func TestTags(t *testing.T) {
 }
 
 func TestValues(t *testing.T) {
-	err1 := goerr.New("omg").With("color", "blue")
+	err1 := goerr.New("omg", goerr.V("color", "blue"))
 	err2 := fmt.Errorf("oops: %w", err1)
-	err3 := goerr.Wrap(err2, "red").With("number", "five")
+	err3 := goerr.Wrap(err2, "red", goerr.V("number", "five"))
 	err4 := fmt.Errorf("oh no: %w", err3)
 
 	values := goerr.Values(err4)

@@ -27,7 +27,7 @@ func V(key string, value any) Option {
 // Tag sets tag to the error
 func Tag(t tag) Option {
 	return func(err *Error) {
-		err.tags.add(t)
+		err.tags[t] = struct{}{}
 	}
 }
 
@@ -81,6 +81,15 @@ func Tags(err error) []string {
 	}
 
 	return nil
+}
+
+// HasTag returns true if the error has the tag.
+func HasTag(err error, tag tag) bool {
+	if e := Unwrap(err); e != nil {
+		return e.HasTag(tag)
+	}
+
+	return false
 }
 
 type values map[string]any

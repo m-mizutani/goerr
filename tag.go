@@ -51,26 +51,19 @@ func (t tag) Format(s fmt.State, verb rune) {
 // Deprecated: Use goerr.Tag instead.
 func (x *Error) WithTags(tags ...tag) *Error {
 	for _, tag := range tags {
-		x.tags.add(tag)
+		x.tags[tag] = struct{}{}
 	}
 	return x
 }
 
 // HasTag returns true if the error has the tag.
 func (x *Error) HasTag(tag tag) bool {
-	return x.tags.has(tag)
+	tags := x.mergedTags()
+	_, ok := tags[tag]
+	return ok
 }
 
 type tags map[tag]struct{}
-
-func (t tags) add(tag tag) {
-	t[tag] = struct{}{}
-}
-
-func (t tags) has(tag tag) bool {
-	_, ok := t[tag]
-	return ok
-}
 
 func (t tags) clone() tags {
 	newTags := make(tags)

@@ -45,7 +45,7 @@ func New(msg string, options ...Option) *Error {
 
 // Wrap creates a new Error and add message.
 func Wrap(cause error, msg string, options ...Option) *Error {
-	err := newError()
+	err := newError(options...)
 	err.msg = msg
 	err.cause = cause
 
@@ -127,12 +127,17 @@ func newError(options ...Option) *Error {
 	return e
 }
 
-func (x *Error) copy(dst *Error) {
+func (x *Error) copy(dst *Error, options ...Option) {
 	dst.msg = x.msg
 	dst.id = x.id
 	dst.cause = x.cause
+
 	dst.tags = x.tags.clone()
 	dst.values = x.values.clone()
+
+	for _, opt := range options {
+		opt(dst)
+	}
 	// st (stacktrace) is not copied
 }
 
@@ -209,14 +214,6 @@ func (x *Error) Unwrap() error {
 	return x.cause
 }
 
-// With adds key and value related to the error event
-//
-// Deprecated: Use goerr.Value instead.
-func (x *Error) With(key string, value any) *Error {
-	x.values[key] = value
-	return x
-}
-
 // Unstack trims stack trace by 1. It can be used for internal helper or utility functions.
 func (x *Error) Unstack() *Error {
 	x.st = unstack(x.st, 1)
@@ -248,9 +245,9 @@ func (x *Error) ID(id string) *Error {
 }
 
 // Wrap creates a new Error and copy message and id to new one.
-func (x *Error) Wrap(cause error) *Error {
+func (x *Error) Wrap(cause error, options ...Option) *Error {
 	err := newError()
-	x.copy(err)
+	x.copy(err, options...)
 	err.cause = cause
 	return err
 }

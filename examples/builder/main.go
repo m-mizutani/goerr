@@ -12,7 +12,7 @@ type object struct {
 }
 
 func (o *object) Validate() error {
-	eb := goerr.NewBuilder().With("id", o.id)
+	eb := goerr.NewBuilder().With(goerr.Value("id", o.id))
 
 	if o.color == "" {
 		return eb.New("color is empty")

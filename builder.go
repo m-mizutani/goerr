@@ -13,13 +13,11 @@ func NewBuilder(options ...Option) *Builder {
 }
 
 // With copies the current Builder and adds a new key-value pair.
-//
-// Deprecated: Use goerr.Value instead.
-func (x *Builder) With(key string, value any) *Builder {
+func (x *Builder) With(options ...Option) *Builder {
 	newBuilder := &Builder{
 		options: x.options[:],
 	}
-	newBuilder.options = append(newBuilder.options, Value(key, value))
+	newBuilder.options = append(newBuilder.options, options...)
 	return newBuilder
 }
 

@@ -349,3 +349,16 @@ func TestValues(t *testing.T) {
 		t.Errorf("Expected value for 'number' to be 'five', got '%v'", values["number"])
 	}
 }
+
+func TestFormat(t *testing.T) {
+	err := goerr.New("omg", goerr.V("color", "blue"), goerr.V("number", 123))
+
+	b := &bytes.Buffer{}
+	fmt.Fprintf(b, "%+v", err)
+	if !strings.Contains(b.String(), "color: blue") {
+		t.Errorf("Expected log output to contain 'color: blue', got '%s'", b.String())
+	}
+	if !strings.Contains(b.String(), "number: 123") {
+		t.Errorf("Expected log output to contain 'number: 123', got '%s'", b.String())
+	}
+}

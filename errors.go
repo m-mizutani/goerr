@@ -206,6 +206,7 @@ func (x *Error) Format(s fmt.State, verb rune) {
 				for k, v := range x.values {
 					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, v))
 				}
+				_, _ = io.WriteString(s, "\n")
 			}
 			return
 		}

@@ -355,7 +355,10 @@ func TestFormat(t *testing.T) {
 
 	b := &bytes.Buffer{}
 	fmt.Fprintf(b, "%+v", err)
-	if !strings.Contains(b.String(), "- color=blue") {
-		t.Errorf("Expected log output to contain 'color=blue', got '%s'", b.String())
+	if !strings.Contains(b.String(), "color: blue") {
+		t.Errorf("Expected log output to contain 'color: blue', got '%s'", b.String())
+	}
+	if !strings.Contains(b.String(), "number: 123") {
+		t.Errorf("Expected log output to contain 'number: 123', got '%s'", b.String())
 	}
 }

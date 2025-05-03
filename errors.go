@@ -199,6 +199,14 @@ func (x *Error) Format(s fmt.State, verb rune) {
 				c = cause
 			}
 			c.st.Format(s, verb)
+			_, _ = io.WriteString(s, "\n")
+
+			if len(x.values) > 0 {
+				_, _ = io.WriteString(s, "\nValues:\n")
+				for k, v := range x.values {
+					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, v))
+				}
+			}
 			return
 		}
 		fallthrough

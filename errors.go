@@ -346,7 +346,7 @@ func (x *Error) LogValue() slog.Value {
 	var stacktrace any
 	var traces []string
 	for _, st := range x.StackTrace() {
-		traces = append(traces, fmt.Sprintf("%s:%d %s", st.file(), st.line(), st.name()))
+		traces = append(traces, fmt.Sprintf("%s:%d %s", st.getFilePath(), st.getLineNumber(), st.getFunctionName()))
 	}
 	stacktrace = traces
 

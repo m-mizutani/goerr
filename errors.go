@@ -1,6 +1,7 @@
 package goerr
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -147,13 +148,8 @@ func (x *Error) Printable() *Printable {
 		Message:    x.msg,
 		ID:         x.id,
 		StackTrace: x.Stacks(),
-		Values:     make(map[string]any),
-	}
-	for k, v := range x.values {
-		e.Values[k] = v
-	}
-	for tag := range x.tags {
-		e.Tags = append(e.Tags, tag.value)
+		Values:     x.Values(), // Use Values() to get merged values from wrapped errors
+		Tags:       x.Tags(),   // Use Tags() to get merged tags from wrapped errors
 	}
 
 	if cause := Unwrap(x.cause); cause != nil {
@@ -363,4 +359,14 @@ func (x *Error) LogValue() slog.Value {
 	}
 
 	return slog.GroupValue(attrs...)
+}
+
+// MarshalJSON implements json.Marshaler interface for Error type.
+// It provides comprehensive JSON serialization including message, ID,
+// stack trace, values, tags, and cause information.
+func (x *Error) MarshalJSON() ([]byte, error) {
+	if x == nil {
+		return []byte("null"), nil
+	}
+	return json.Marshal(x.Printable())
 }

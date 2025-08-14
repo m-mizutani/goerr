@@ -2,6 +2,7 @@ package goerr_test
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -129,8 +130,8 @@ func TestStackTrace(t *testing.T) {
 	if !regexp.MustCompile(`/goerr/errors_test\.go$`).MatchString(st[0].File) {
 		t.Error("Stack trace file is not correct")
 	}
-	if st[0].Line != 16 {
-		t.Errorf("Expected line number 13, got %d", st[0].Line)
+	if st[0].Line != 17 {
+		t.Errorf("Expected line number 17, got %d", st[0].Line)
 	}
 }
 
@@ -361,4 +362,308 @@ func TestFormat(t *testing.T) {
 	if !strings.Contains(b.String(), "number: 123") {
 		t.Errorf("Expected log output to contain 'number: 123', got '%s'", b.String())
 	}
+}
+
+// Helper functions for MarshalJSON tests
+func createSimpleError() *goerr.Error {
+	return goerr.New("simple error message")
+}
+
+func createErrorWithValues() *goerr.Error {
+	return goerr.New("error with values",
+		goerr.Value("key1", "value1"),
+		goerr.Value("key2", 42),
+		goerr.Value("key3", true))
+}
+
+func createErrorWithTags() *goerr.Error {
+	tag1 := goerr.NewTag("tag1")
+	tag2 := goerr.NewTag("tag2")
+	return goerr.New("error with tags",
+		goerr.Tag(tag1),
+		goerr.Tag(tag2))
+}
+
+func createWrappedErrorChain() *goerr.Error {
+	inner := goerr.New("inner error", goerr.Value("inner_key", "inner_value"))
+	return goerr.Wrap(inner, "outer error", goerr.Value("outer_key", "outer_value"))
+}
+
+func createMixedErrorChain() *goerr.Error {
+	stdErr := errors.New("standard error")
+	return goerr.Wrap(stdErr, "wrapped standard error", goerr.Value("wrapper_key", "wrapper_value"))
+}
+
+func setupComplexError() *goerr.Error {
+	tag1 := goerr.NewTag("critical")
+	tag2 := goerr.NewTag("system")
+	inner := goerr.New("database connection failed", goerr.Value("db_host", "localhost"))
+	return goerr.Wrap(inner, "service unavailable",
+		goerr.Value("service", "user-service"),
+		goerr.Value("timestamp", "2024-01-01T12:00:00Z"),
+		goerr.Tag(tag1),
+		goerr.Tag(tag2))
+}
+
+func TestError_MarshalJSON(t *testing.T) {
+	tests := []struct {
+		name     string
+		setupErr func() *goerr.Error
+		validate func(t *testing.T, jsonBytes []byte)
+	}{
+		{
+			name:     "simple error",
+			setupErr: createSimpleError,
+			validate: func(t *testing.T, jsonBytes []byte) {
+				var result map[string]interface{}
+				if err := json.Unmarshal(jsonBytes, &result); err != nil {
+					t.Fatalf("Failed to unmarshal JSON: %v", err)
+				}
+				if result["message"] != "simple error message" {
+					t.Errorf("Expected message 'simple error message', got %v", result["message"])
+				}
+				if result["id"] == nil || result["id"] == "" {
+					t.Error("Expected non-empty id")
+				}
+				if result["stacktrace"] == nil {
+					t.Error("Expected stacktrace to be present")
+				}
+			},
+		},
+		{
+			name:     "error with values",
+			setupErr: createErrorWithValues,
+			validate: func(t *testing.T, jsonBytes []byte) {
+				var result map[string]interface{}
+				if err := json.Unmarshal(jsonBytes, &result); err != nil {
+					t.Fatalf("Failed to unmarshal JSON: %v", err)
+				}
+				values, ok := result["values"].(map[string]interface{})
+				if !ok {
+					t.Fatal("Expected values to be object")
+				}
+				if values["key1"] != "value1" {
+					t.Errorf("Expected key1='value1', got %v", values["key1"])
+				}
+				if values["key2"] != float64(42) { // JSON numbers are float64
+					t.Errorf("Expected key2=42, got %v", values["key2"])
+				}
+				if values["key3"] != true {
+					t.Errorf("Expected key3=true, got %v", values["key3"])
+				}
+			},
+		},
+		{
+			name:     "error with tags",
+			setupErr: createErrorWithTags,
+			validate: func(t *testing.T, jsonBytes []byte) {
+				var result map[string]interface{}
+				if err := json.Unmarshal(jsonBytes, &result); err != nil {
+					t.Fatalf("Failed to unmarshal JSON: %v", err)
+				}
+				tags, ok := result["tags"].([]interface{})
+				if !ok {
+					t.Fatal("Expected tags to be array")
+				}
+				if len(tags) != 2 {
+					t.Errorf("Expected 2 tags, got %d", len(tags))
+				}
+				tagSet := make(map[string]bool)
+				for _, tag := range tags {
+					tagSet[tag.(string)] = true
+				}
+				if !tagSet["tag1"] || !tagSet["tag2"] {
+					t.Errorf("Expected tags 'tag1' and 'tag2', got %v", tags)
+				}
+			},
+		},
+		{
+			name:     "wrapped error chain",
+			setupErr: createWrappedErrorChain,
+			validate: func(t *testing.T, jsonBytes []byte) {
+				var result map[string]interface{}
+				if err := json.Unmarshal(jsonBytes, &result); err != nil {
+					t.Fatalf("Failed to unmarshal JSON: %v", err)
+				}
+				if result["message"] != "outer error" {
+					t.Errorf("Expected outer message, got %v", result["message"])
+				}
+				cause, ok := result["cause"].(map[string]interface{})
+				if !ok {
+					t.Fatal("Expected cause to be object")
+				}
+				if cause["message"] != "inner error" {
+					t.Errorf("Expected inner message, got %v", cause["message"])
+				}
+				// Check merged values
+				values, ok := result["values"].(map[string]interface{})
+				if !ok {
+					t.Fatal("Expected values to be object")
+				}
+				if values["inner_key"] != "inner_value" {
+					t.Errorf("Expected inner_key='inner_value', got %v", values["inner_key"])
+				}
+				if values["outer_key"] != "outer_value" {
+					t.Errorf("Expected outer_key='outer_value', got %v", values["outer_key"])
+				}
+			},
+		},
+		{
+			name:     "mixed error chain",
+			setupErr: createMixedErrorChain,
+			validate: func(t *testing.T, jsonBytes []byte) {
+				var result map[string]interface{}
+				if err := json.Unmarshal(jsonBytes, &result); err != nil {
+					t.Fatalf("Failed to unmarshal JSON: %v", err)
+				}
+				cause, ok := result["cause"].(string)
+				if !ok {
+					t.Fatal("Expected cause to be string for standard error")
+				}
+				if cause != "standard error" {
+					t.Errorf("Expected cause='standard error', got %v", cause)
+				}
+			},
+		},
+		{
+			name:     "nil error",
+			setupErr: func() *goerr.Error { return nil },
+			validate: func(t *testing.T, jsonBytes []byte) {
+				expected := "null"
+				if string(jsonBytes) != expected {
+					t.Errorf("Expected %s, got %s", expected, string(jsonBytes))
+				}
+			},
+		},
+		{
+			name:     "complex error",
+			setupErr: setupComplexError,
+			validate: func(t *testing.T, jsonBytes []byte) {
+				var result map[string]interface{}
+				if err := json.Unmarshal(jsonBytes, &result); err != nil {
+					t.Fatalf("Failed to unmarshal JSON: %v", err)
+				}
+				// Verify all components
+				if result["message"] == nil {
+					t.Error("Expected message")
+				}
+				if result["values"] == nil {
+					t.Error("Expected values")
+				}
+				if result["tags"] == nil {
+					t.Error("Expected tags")
+				}
+				if result["cause"] == nil {
+					t.Error("Expected cause")
+				}
+				if result["stacktrace"] == nil {
+					t.Error("Expected stacktrace")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.setupErr()
+			jsonBytes, marshalErr := json.Marshal(err)
+			if marshalErr != nil {
+				t.Fatalf("Failed to marshal error: %v", marshalErr)
+			}
+			tt.validate(t, jsonBytes)
+		})
+	}
+}
+
+func TestError_MarshalJSON_Integration(t *testing.T) {
+	err := createComplexErrorForIntegration()
+
+	// Test with json.Marshal
+	jsonBytes, marshalErr := json.Marshal(err)
+	if marshalErr != nil {
+		t.Fatalf("json.Marshal failed: %v", marshalErr)
+	}
+
+	var result map[string]interface{}
+	if unmarshalErr := json.Unmarshal(jsonBytes, &result); unmarshalErr != nil {
+		t.Fatalf("json.Unmarshal failed: %v", unmarshalErr)
+	}
+
+	if result["message"] == nil {
+		t.Error("Expected message in JSON output")
+	}
+}
+
+func TestError_MarshalJSON_Encoder(t *testing.T) {
+	err := createSimpleError()
+
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	if encodeErr := encoder.Encode(err); encodeErr != nil {
+		t.Fatalf("json.NewEncoder().Encode() failed: %v", encodeErr)
+	}
+
+	var result map[string]interface{}
+	if unmarshalErr := json.Unmarshal(buf.Bytes(), &result); unmarshalErr != nil {
+		t.Fatalf("json.Unmarshal failed: %v", unmarshalErr)
+	}
+
+	if result["message"] != "simple error message" {
+		t.Errorf("Expected message 'simple error message', got %v", result["message"])
+	}
+}
+
+func TestError_MarshalJSON_Compatibility(t *testing.T) {
+	err := createComplexErrorForIntegration()
+
+	// Marshal using MarshalJSON
+	jsonBytes1, err1 := json.Marshal(err)
+	if err1 != nil {
+		t.Fatalf("json.Marshal(err) failed: %v", err1)
+	}
+
+	// Marshal using Printable
+	jsonBytes2, err2 := json.Marshal(err.Printable())
+	if err2 != nil {
+		t.Fatalf("json.Marshal(err.Printable()) failed: %v", err2)
+	}
+
+	// Results should be identical
+	if string(jsonBytes1) != string(jsonBytes2) {
+		t.Error("MarshalJSON output should match Printable() output")
+		t.Logf("MarshalJSON: %s", string(jsonBytes1))
+		t.Logf("Printable:   %s", string(jsonBytes2))
+	}
+}
+
+func createComplexErrorForIntegration() *goerr.Error {
+	tag := goerr.NewTag("integration")
+	inner := goerr.New("inner error", goerr.Value("inner", "value"))
+	return goerr.Wrap(inner, "integration test error",
+		goerr.Value("test", "integration"),
+		goerr.Tag(tag))
+}
+
+func BenchmarkError_MarshalJSON(b *testing.B) {
+	err := setupComplexError()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = json.Marshal(err)
+	}
+}
+
+func BenchmarkError_MarshalJSON_vs_Printable(b *testing.B) {
+	err := setupComplexError()
+
+	b.Run("MarshalJSON", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = json.Marshal(err)
+		}
+	})
+
+	b.Run("Printable", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_, _ = json.Marshal(err.Printable())
+		}
+	})
 }

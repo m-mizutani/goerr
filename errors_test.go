@@ -78,6 +78,7 @@ func TestOptions(t *testing.T) {
 	}
 
 	for name, tc := range testCases {
+		tc := tc // capture range variable for Go versions < 1.22
 		t.Run(name, func(t *testing.T) {
 			err := goerr.New("test", tc.options...)
 			values := err.Values()
@@ -566,6 +567,7 @@ func TestError_MarshalJSON(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt // capture range variable for Go versions < 1.22
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.setupErr()
 			jsonBytes, marshalErr := json.Marshal(err)

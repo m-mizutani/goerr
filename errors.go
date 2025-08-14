@@ -149,9 +149,7 @@ func (x *Error) Printable() *Printable {
 		ID:         x.id,
 		StackTrace: x.Stacks(),
 		Values:     x.Values(), // Use Values() to get merged values from wrapped errors
-	}
-	for tag := range x.tags {
-		e.Tags = append(e.Tags, tag.value)
+		Tags:       x.Tags(),   // Use Tags() to get merged tags from wrapped errors
 	}
 
 	if cause := Unwrap(x.cause); cause != nil {

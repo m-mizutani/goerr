@@ -6,7 +6,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -130,8 +132,8 @@ func TestStackTrace(t *testing.T) {
 	if !regexp.MustCompile(`/goerr/errors_test\.go$`).MatchString(st[0].File) {
 		t.Error("Stack trace file is not correct")
 	}
-	if st[0].Line != 17 {
-		t.Errorf("Expected line number 17, got %d", st[0].Line)
+	if st[0].Line != 19 {
+		t.Errorf("Expected line number 19, got %d", st[0].Line)
 	}
 }
 
@@ -628,11 +630,49 @@ func TestError_MarshalJSON_Compatibility(t *testing.T) {
 		t.Fatalf("json.Marshal(err.Printable()) failed: %v", err2)
 	}
 
-	// Results should be identical
-	if string(jsonBytes1) != string(jsonBytes2) {
+	// Unmarshal both to compare structure instead of string
+	var result1, result2 map[string]interface{}
+	if err := json.Unmarshal(jsonBytes1, &result1); err != nil {
+		t.Fatalf("Failed to unmarshal MarshalJSON result: %v", err)
+	}
+	if err := json.Unmarshal(jsonBytes2, &result2); err != nil {
+		t.Fatalf("Failed to unmarshal Printable result: %v", err)
+	}
+	
+	// Normalize tags order since map iteration is non-deterministic
+	normalizeTagsOrder(result1)
+	normalizeTagsOrder(result2)
+	
+	// Compare the structures
+	if !reflect.DeepEqual(result1, result2) {
 		t.Error("MarshalJSON output should match Printable() output")
-		t.Logf("MarshalJSON: %s", string(jsonBytes1))
-		t.Logf("Printable:   %s", string(jsonBytes2))
+		t.Logf("MarshalJSON: %+v", result1)
+		t.Logf("Printable:   %+v", result2)
+	}
+}
+
+// normalizeTagsOrder sorts tags arrays in the JSON structure recursively
+// to ensure deterministic comparison
+func normalizeTagsOrder(data map[string]interface{}) {
+	if tags, ok := data["tags"].([]interface{}); ok {
+		// Convert to string slice, sort, and convert back
+		tagStrings := make([]string, len(tags))
+		for i, tag := range tags {
+			tagStrings[i] = tag.(string)
+		}
+		sort.Strings(tagStrings)
+		
+		// Convert back to []interface{}
+		sortedTags := make([]interface{}, len(tagStrings))
+		for i, tag := range tagStrings {
+			sortedTags[i] = tag
+		}
+		data["tags"] = sortedTags
+	}
+	
+	// Recursively normalize nested cause objects
+	if cause, ok := data["cause"].(map[string]interface{}); ok {
+		normalizeTagsOrder(cause)
 	}
 }
 

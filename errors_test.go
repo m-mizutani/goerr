@@ -640,11 +640,11 @@ func TestError_MarshalJSON_Compatibility(t *testing.T) {
 	if err := json.Unmarshal(jsonBytes2, &result2); err != nil {
 		t.Fatalf("Failed to unmarshal Printable result: %v", err)
 	}
-	
+
 	// Normalize tags order since map iteration is non-deterministic
 	normalizeTagsOrder(result1)
 	normalizeTagsOrder(result2)
-	
+
 	// Compare the structures
 	if !reflect.DeepEqual(result1, result2) {
 		t.Error("MarshalJSON output should match Printable() output")
@@ -663,7 +663,7 @@ func normalizeTagsOrder(data map[string]interface{}) {
 			tagStrings[i] = tag.(string)
 		}
 		sort.Strings(tagStrings)
-		
+
 		// Convert back to []interface{}
 		sortedTags := make([]interface{}, len(tagStrings))
 		for i, tag := range tagStrings {
@@ -671,7 +671,7 @@ func normalizeTagsOrder(data map[string]interface{}) {
 		}
 		data["tags"] = sortedTags
 	}
-	
+
 	// Recursively normalize nested cause objects
 	if cause, ok := data["cause"].(map[string]interface{}); ok {
 		normalizeTagsOrder(cause)

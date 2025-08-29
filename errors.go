@@ -48,7 +48,7 @@ func V(key string, value any) Option {
 // TypedValue sets typed key and value to the error
 func TypedValue[T any](key TypedKey[T], value T) Option {
 	return func(err *Error) {
-		err.values[key.name] = value
+		err.typedValues[key.name] = value
 	}
 }
 
@@ -107,6 +107,15 @@ func Values(err error) map[string]any {
 	return nil
 }
 
+// TypedValues returns map of key and value that is set by TypedValue. All wrapped goerr.Error typed key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
+func TypedValues(err error) map[string]any {
+	if e := Unwrap(err); e != nil {
+		return e.TypedValues()
+	}
+
+	return nil
+}
+
 // Tags returns list of tags that is set by WithTags. All wrapped goerr.Error tags will be merged. Tags of wrapped error is overwritten by upper goerr.Error.
 func Tags(err error) []string {
 	if e := Unwrap(err); e != nil {
@@ -137,20 +146,22 @@ func (x values) clone() values {
 
 // Error is error interface for deepalert to handle related variables
 type Error struct {
-	msg    string
-	id     string
-	st     *stack
-	cause  error
-	values values
-	tags   tags
+	msg         string
+	id          string
+	st          *stack
+	cause       error
+	values      values         // String-based values
+	typedValues map[string]any // Type-safe values
+	tags        tags
 }
 
 func newError(options ...Option) *Error {
 	e := &Error{
-		st:     callers(),
-		values: make(values),
-		id:     uuid.New().String(),
-		tags:   make(tags),
+		st:          callers(),
+		values:      make(values),
+		typedValues: make(map[string]any),
+		id:          uuid.New().String(),
+		tags:        make(tags),
 	}
 
 	for _, opt := range options {
@@ -168,6 +179,12 @@ func (x *Error) copy(dst *Error, options ...Option) {
 	dst.tags = x.tags.clone()
 	dst.values = x.values.clone()
 
+	// Clone typed values
+	dst.typedValues = make(map[string]any)
+	for key, value := range x.typedValues {
+		dst.typedValues[key] = value
+	}
+
 	for _, opt := range options {
 		opt(dst)
 	}
@@ -177,11 +194,12 @@ func (x *Error) copy(dst *Error, options ...Option) {
 // Printable returns printable object
 func (x *Error) Printable() *Printable {
 	e := &Printable{
-		Message:    x.msg,
-		ID:         x.id,
-		StackTrace: x.Stacks(),
-		Values:     x.Values(), // Use Values() to get merged values from wrapped errors
-		Tags:       x.Tags(),   // Use Tags() to get merged tags from wrapped errors
+		Message:     x.msg,
+		ID:          x.id,
+		StackTrace:  x.Stacks(),
+		Values:      x.Values(),      // Use Values() to get merged string-based values from wrapped errors
+		TypedValues: x.TypedValues(), // Use TypedValues() to get merged typed values from wrapped errors
+		Tags:        x.Tags(),        // Use Tags() to get merged tags from wrapped errors
 	}
 
 	if cause := Unwrap(x.cause); cause != nil {
@@ -193,12 +211,13 @@ func (x *Error) Printable() *Printable {
 }
 
 type Printable struct {
-	Message    string         `json:"message"`
-	ID         string         `json:"id"`
-	StackTrace []*Stack       `json:"stacktrace"`
-	Cause      any            `json:"cause"`
-	Values     map[string]any `json:"values"`
-	Tags       []string       `json:"tags"`
+	Message     string         `json:"message"`
+	ID          string         `json:"id"`
+	StackTrace  []*Stack       `json:"stacktrace"`
+	Cause       any            `json:"cause"`
+	Values      map[string]any `json:"values"`
+	TypedValues map[string]any `json:"typed_values"`
+	Tags        []string       `json:"tags"`
 }
 
 // Error returns error message for error interface
@@ -232,6 +251,13 @@ func (x *Error) Format(s fmt.State, verb rune) {
 			if len(x.values) > 0 {
 				_, _ = io.WriteString(s, "\nValues:\n")
 				for k, v := range x.values {
+					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, v))
+				}
+				_, _ = io.WriteString(s, "\n")
+			}
+			if len(x.typedValues) > 0 {
+				_, _ = io.WriteString(s, "\nTyped Values:\n")
+				for k, v := range x.typedValues {
 					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, v))
 				}
 				_, _ = io.WriteString(s, "\n")
@@ -293,11 +319,24 @@ func (x *Error) Wrap(cause error, options ...Option) *Error {
 func (x *Error) Values() map[string]any {
 	values := x.mergedValues()
 
+	// Add string-based values
 	for key, value := range x.values {
 		values[key] = value
 	}
 
 	return values
+}
+
+// TypedValues returns map of key and value that is set by TypedValue. All wrapped goerr.Error typed key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
+func (x *Error) TypedValues() map[string]any {
+	typedValues := x.mergedTypedValues()
+
+	// Add typed values
+	for key, value := range x.typedValues {
+		typedValues[key] = value
+	}
+
+	return typedValues
 }
 
 // GetTypedValue returns value associated with the typed key from the error. It searches through the error chain.
@@ -311,8 +350,8 @@ func GetTypedValue[T any](err error, key TypedKey[T]) (T, bool) {
 }
 
 func getTypedValueFromError[T any](err *Error, key TypedKey[T]) (T, bool) {
-	// Search in current error
-	if value, ok := err.values[key.name]; ok {
+	// Search in current error's typed values
+	if value, ok := err.typedValues[key.name]; ok {
 		// Key found at this level. This is the definitive value.
 		// Check if the type matches.
 		if typedValue, ok := value.(T); ok {
@@ -343,7 +382,25 @@ func (x *Error) mergedValues() values {
 		}
 	}
 
+	// Merge string-based values
 	for key, value := range x.values {
+		merged[key] = value
+	}
+
+	return merged
+}
+
+func (x *Error) mergedTypedValues() map[string]any {
+	merged := make(map[string]any)
+
+	if cause := x.Unwrap(); cause != nil {
+		if err := Unwrap(cause); err != nil {
+			merged = err.mergedTypedValues()
+		}
+	}
+
+	// Merge typed values
+	for key, value := range x.typedValues {
 		merged[key] = value
 	}
 
@@ -398,6 +455,12 @@ func (x *Error) LogValue() slog.Value {
 		values = append(values, slog.Any(k, v))
 	}
 	attrs = append(attrs, slog.Group("values", values...))
+
+	var typedValues []any
+	for k, v := range x.typedValues {
+		typedValues = append(typedValues, slog.Any(k, v))
+	}
+	attrs = append(attrs, slog.Group("typed_values", typedValues...))
 
 	var tags []string
 	for tag := range x.tags {

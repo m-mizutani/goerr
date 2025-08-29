@@ -299,13 +299,13 @@ func TestTypedValueMerging(t *testing.T) {
 func TestBackwardCompatibility(t *testing.T) {
 	userIDKey := goerr.NewTypedKey[string]("user_id")
 
-	t.Run("string keys and typed keys coexist", func(t *testing.T) {
+	t.Run("string keys and typed keys separated", func(t *testing.T) {
 		err := goerr.New("test error",
 			goerr.V("old_key", "old_value"),  // string key
 			goerr.TV(userIDKey, "new_value"), // typed key
 		)
 
-		// Both values should be accessible via Values()
+		// String values should only be accessible via Values()
 		values := goerr.Values(err)
 		if values == nil {
 			t.Fatal("Values() returned nil")
@@ -315,8 +315,24 @@ func TestBackwardCompatibility(t *testing.T) {
 			t.Errorf("Values()['old_key'] = %v, want %v", values["old_key"], "old_value")
 		}
 
-		if values["user_id"] != "new_value" {
-			t.Errorf("Values()['user_id'] = %v, want %v", values["user_id"], "new_value")
+		// String values should NOT contain typed values
+		if _, exists := values["user_id"]; exists {
+			t.Error("Values() should not contain typed values")
+		}
+
+		// Typed values should only be accessible via TypedValues()
+		typedValues := goerr.TypedValues(err)
+		if typedValues == nil {
+			t.Fatal("TypedValues() returned nil")
+		}
+
+		if typedValues["user_id"] != "new_value" {
+			t.Errorf("TypedValues()['user_id'] = %v, want %v", typedValues["user_id"], "new_value")
+		}
+
+		// Typed values should NOT contain string values
+		if _, exists := typedValues["old_key"]; exists {
+			t.Error("TypedValues() should not contain string values")
 		}
 
 		// Typed value should be accessible via GetTypedValue
@@ -344,22 +360,37 @@ func TestMixedKeyTypes(t *testing.T) {
 			goerr.TV(requestIDKey, int64(456)),
 		)
 
-		// All values should be accessible via Values()
+		// String values should be accessible via Values()
 		values := goerr.Values(wrappedErr)
 		if values == nil {
 			t.Fatal("Values() returned nil")
 		}
 
-		expected := map[string]any{
+		expectedStringValues := map[string]any{
 			"legacy_key":     "legacy_value",
-			"user_id":        "user123",
 			"another_legacy": 123,
-			"request_id":     int64(456),
 		}
 
-		for key, expectedValue := range expected {
+		for key, expectedValue := range expectedStringValues {
 			if values[key] != expectedValue {
 				t.Errorf("Values()['%s'] = %v, want %v", key, values[key], expectedValue)
+			}
+		}
+
+		// Typed values should be accessible via TypedValues()
+		typedValues := goerr.TypedValues(wrappedErr)
+		if typedValues == nil {
+			t.Fatal("TypedValues() returned nil")
+		}
+
+		expectedTypedValues := map[string]any{
+			"user_id":    "user123",
+			"request_id": int64(456),
+		}
+
+		for key, expectedValue := range expectedTypedValues {
+			if typedValues[key] != expectedValue {
+				t.Errorf("TypedValues()['%s'] = %v, want %v", key, typedValues[key], expectedValue)
 			}
 		}
 
@@ -380,33 +411,42 @@ func TestValuesMethod(t *testing.T) {
 	userIDKey := goerr.NewTypedKey[string]("user_id")
 	countKey := goerr.NewTypedKey[int]("count")
 
-	t.Run("Values() method includes typed values", func(t *testing.T) {
+	t.Run("TypedValues() method excludes string values", func(t *testing.T) {
 		err := goerr.New("test error",
 			goerr.TV(userIDKey, "user123"),
 			goerr.TV(countKey, 42),
 		)
 
+		// Values() should be empty since no string keys were used
 		values := goerr.Values(err)
 		if values == nil {
 			t.Fatal("Values() returned nil")
 		}
-
-		// Typed values should be accessible as regular map values
-		if values["user_id"] != "user123" {
-			t.Errorf("Values()['user_id'] = %v, want %v", values["user_id"], "user123")
+		if len(values) != 0 {
+			t.Errorf("Values() should be empty, got %v", values)
 		}
 
-		if values["count"] != 42 {
-			t.Errorf("Values()['count'] = %v, want %v", values["count"], 42)
+		// TypedValues() should contain the typed values
+		typedValues := goerr.TypedValues(err)
+		if typedValues == nil {
+			t.Fatal("TypedValues() returned nil")
 		}
 
-		// Type assertions should work for Values() results
-		if userID, ok := values["user_id"].(string); !ok || userID != "user123" {
-			t.Errorf("Type assertion for values['user_id'] failed: %v, %v", userID, ok)
+		if typedValues["user_id"] != "user123" {
+			t.Errorf("TypedValues()['user_id'] = %v, want %v", typedValues["user_id"], "user123")
 		}
 
-		if count, ok := values["count"].(int); !ok || count != 42 {
-			t.Errorf("Type assertion for values['count'] failed: %v, %v", count, ok)
+		if typedValues["count"] != 42 {
+			t.Errorf("TypedValues()['count'] = %v, want %v", typedValues["count"], 42)
+		}
+
+		// Type assertions should work for TypedValues() results
+		if userID, ok := typedValues["user_id"].(string); !ok || userID != "user123" {
+			t.Errorf("Type assertion for typedValues['user_id'] failed: %v, %v", userID, ok)
+		}
+
+		if count, ok := typedValues["count"].(int); !ok || count != 42 {
+			t.Errorf("Type assertion for typedValues['count'] failed: %v, %v", count, ok)
 		}
 	})
 }
@@ -581,4 +621,65 @@ func TestTypedValueZeroValue(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, tt.testFunc)
 	}
+}
+
+func TestTypedValueClone(t *testing.T) {
+	userIDKey := goerr.NewTypedKey[string]("user_id")
+	countKey := goerr.NewTypedKey[int]("count")
+
+	t.Run("values clone correctly in error copy", func(t *testing.T) {
+		originalErr := goerr.New("original error",
+			goerr.TV(userIDKey, "user123"),
+			goerr.TV(countKey, 42),
+		)
+
+		// Use Wrap which internally uses copy() method
+		wrappedErr := originalErr.Wrap(nil, goerr.TV(userIDKey, "user456"))
+
+		// Original error should still have original values
+		if userID, ok := goerr.GetTypedValue(originalErr, userIDKey); !ok || userID != "user123" {
+			t.Errorf("Original error userID = %v, %v, want %v, true", userID, ok, "user123")
+		}
+
+		if count, ok := goerr.GetTypedValue(originalErr, countKey); !ok || count != 42 {
+			t.Errorf("Original error count = %v, %v, want %v, true", count, ok, 42)
+		}
+
+		// Wrapped error should have modified userID but same count
+		if userID, ok := goerr.GetTypedValue(wrappedErr, userIDKey); !ok || userID != "user456" {
+			t.Errorf("Wrapped error userID = %v, %v, want %v, true", userID, ok, "user456")
+		}
+
+		if count, ok := goerr.GetTypedValue(wrappedErr, countKey); !ok || count != 42 {
+			t.Errorf("Wrapped error count = %v, %v, want %v, true", count, ok, 42)
+		}
+	})
+
+	t.Run("modifying cloned values does not affect original", func(t *testing.T) {
+		configKey := goerr.NewTypedKey[map[string]string]("config")
+		originalConfig := map[string]string{"key": "value"}
+
+		originalErr := goerr.New("original error",
+			goerr.TV(configKey, originalConfig),
+		)
+
+		// Get the config from original error
+		retrievedConfig, ok := goerr.GetTypedValue(originalErr, configKey)
+		if !ok {
+			t.Fatal("Failed to retrieve config from original error")
+		}
+
+		// Modify the retrieved config (this modifies the actual map reference)
+		retrievedConfig["key"] = "modified"
+
+		// Check if original error's config is also modified (it should be, since we only do shallow copy)
+		checkConfig, ok := goerr.GetTypedValue(originalErr, configKey)
+		if !ok {
+			t.Fatal("Failed to retrieve config for verification")
+		}
+
+		if checkConfig["key"] != "modified" {
+			t.Error("Expected shallow copy behavior - map reference should be shared")
+		}
+	})
 }

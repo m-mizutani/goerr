@@ -11,6 +11,7 @@ Package `goerr` provides more contextual error handling in Go.
   - Structured stack traces with `goerr.Stack` is available.
 - Contextual variables to errors using:
   - Key value data by `goerr.Value(key, value)` (or `goerr.V(key, value)` as alias).
+  - **Type-safe key value data** by `goerr.TypedValue(key, value)` (or `goerr.TV(key, value)` as alias) with compile-time type checking.
   - Tag value data can be defined by `goerr.NewTag` and set into error by `goerr.Tag(tag)` (or `goerr.T(tag)` as alias).
 - `errors.Is` to identify errors and `errors.As` to unwrap errors.
 - `slog.LogValuer` interface to output structured logs with `slog`.
@@ -159,6 +160,85 @@ hub.ConfigureScope(func(scope *sentry.Scope) {
   }
 })
 evID := hub.CaptureException(err)
+```
+
+#### Type-safe values
+
+`goerr` provides type-safe contextual variables using `TypedValue` with generics. This feature offers compile-time type checking, preventing type-related runtime errors and enabling better IDE support with autocompletion.
+
+```go
+// Define typed keys (usually at package level)
+var (
+    UserIDKey    = goerr.NewTypedKey[string]("user_id")
+    RequestIDKey = goerr.NewTypedKey[int64]("request_id")
+    ConfigKey    = goerr.NewTypedKey[*Config]("config")
+)
+
+type Config struct {
+    Host string
+    Port int
+}
+
+func handleRequest(userID string, requestID int64) error {
+    config := &Config{Host: "localhost", Port: 8080}
+
+    if err := validateUser(userID); err != nil {
+        return goerr.Wrap(err, "user validation failed",
+            goerr.TV(UserIDKey, userID),        // Type-safe: string
+            goerr.TV(RequestIDKey, requestID),  // Type-safe: int64
+            goerr.TV(ConfigKey, config),        // Type-safe: *Config
+        )
+    }
+    return nil
+}
+
+func validateUser(userID string) error {
+    if userID == "" {
+        return goerr.New("invalid user ID",
+            goerr.TV(UserIDKey, userID),
+        )
+    }
+    return nil
+}
+
+func main() {
+    if err := handleRequest("", 12345); err != nil {
+        // Type-safe value retrieval (no type assertions needed)
+        if userID, ok := goerr.GetTypedValue(err, UserIDKey); ok {
+            log.Printf("Failed for user: %s", userID) // userID is string
+        }
+
+        if requestID, ok := goerr.GetTypedValue(err, RequestIDKey); ok {
+            log.Printf("Request ID: %d", requestID) // requestID is int64
+        }
+
+        if config, ok := goerr.GetTypedValue(err, ConfigKey); ok {
+            log.Printf("Config: %+v", config) // config is *Config
+        }
+
+        log.Fatal(err)
+    }
+}
+```
+
+**Benefits of type-safe values:**
+
+- **Compile-time type checking**: Prevents type mismatches at compile time
+- **IDE support**: Autocompletion for key names and value types
+- **No type assertions**: Values are returned with their correct types
+- **Backward compatibility**: Works alongside existing `Value()` method
+
+**Error cases caught at compile time:**
+
+```go
+userKey := goerr.NewTypedKey[string]("user_id")
+
+// ❌ This will NOT compile - type mismatch
+// err := goerr.New("test", goerr.TV(userKey, 123))
+
+// ❌ This will NOT compile - wrong key type for retrieval
+// intKey := goerr.NewTypedKey[int]("user_id")
+// value, ok := goerr.GetTypedValue(err, intKey)
 ```
 
 #### Tags

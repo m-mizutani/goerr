@@ -500,13 +500,13 @@ func TestTypedValueTypeConflict(t *testing.T) {
 			t.Errorf("GetTypedValue(intKey) = %v, want %v", intValue, 42)
 		}
 
-		// Should get string value from base error (value propagation works)
+		// Should NOT get string value due to type conflict at upper level
 		stringValue, ok := goerr.GetTypedValue(wrappedErr, stringKey)
-		if !ok {
-			t.Error("GetTypedValue(stringKey) returned false, want true")
+		if ok {
+			t.Error("GetTypedValue(stringKey) returned true, want false due to type conflict at upper level")
 		}
-		if stringValue != "base_value" {
-			t.Errorf("GetTypedValue(stringKey) = %v, want %v", stringValue, "base_value")
+		if stringValue != "" {
+			t.Errorf("GetTypedValue(stringKey) = %v, want zero value", stringValue)
 		}
 	})
 }

@@ -313,12 +313,17 @@ func GetTypedValue[T any](err error, key TypedKey[T]) (T, bool) {
 func getTypedValueFromError[T any](err *Error, key TypedKey[T]) (T, bool) {
 	// Search in current error
 	if value, ok := err.values[key.name]; ok {
+		// Key found at this level. This is the definitive value.
+		// Check if the type matches.
 		if typedValue, ok := value.(T); ok {
 			return typedValue, true
 		}
+		// Type does not match. Do not search deeper for this key.
+		var zero T
+		return zero, false
 	}
 
-	// Search in wrapped errors recursively
+	// Key not found at this level. Search in wrapped errors recursively.
 	if cause := err.Unwrap(); cause != nil {
 		if wrappedErr := Unwrap(cause); wrappedErr != nil {
 			return getTypedValueFromError(wrappedErr, key)

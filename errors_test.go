@@ -153,8 +153,8 @@ func TestMultiWrap(t *testing.T) {
 
 func TestErrorCode(t *testing.T) {
 	rootErr := goerr.New("something bad")
-	baseErr1 := goerr.New("oops").ID("code1")
-	baseErr2 := goerr.New("oops").ID("code2")
+	baseErr1 := goerr.New("oops", goerr.ID("code1"))
+	baseErr2 := goerr.New("oops", goerr.ID("code2"))
 
 	newErr := baseErr1.Wrap(rootErr, goerr.V("v", 1))
 
@@ -177,7 +177,7 @@ func TestErrorCode(t *testing.T) {
 
 func TestPrintableWithGoErr(t *testing.T) {
 	cause := errors.New("test")
-	err := goerr.Wrap(cause, "oops", goerr.V("blue", "five")).ID("E001")
+	err := goerr.Wrap(cause, "oops", goerr.V("blue", "five"), goerr.ID("E001"))
 
 	p := err.Printable()
 	if p.Message != "oops" {
@@ -198,7 +198,7 @@ func TestPrintableWithGoErr(t *testing.T) {
 
 func TestPrintableWithError(t *testing.T) {
 	cause := goerr.New("test")
-	err := goerr.Wrap(cause, "oops", goerr.V("blue", "five")).ID("E001")
+	err := goerr.Wrap(cause, "oops", goerr.V("blue", "five"), goerr.ID("E001"))
 
 	p := err.Printable()
 	if p.Message != "oops" {
@@ -425,8 +425,9 @@ func TestError_MarshalJSON(t *testing.T) {
 				if result["message"] != "simple error message" {
 					t.Errorf("Expected message 'simple error message', got %v", result["message"])
 				}
-				if result["id"] == nil || result["id"] == "" {
-					t.Error("Expected non-empty id")
+				// ID is now empty string by default
+				if result["id"] != "" {
+					t.Errorf("Expected empty id, got %v", result["id"])
 				}
 				if result["stacktrace"] == nil {
 					t.Error("Expected stacktrace to be present")

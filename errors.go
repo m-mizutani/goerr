@@ -7,8 +7,6 @@ import (
 	"io"
 
 	"log/slog"
-
-	"github.com/google/uuid"
 )
 
 // TypedKey represents a type-safe key for error values
@@ -43,6 +41,15 @@ func Value(key string, value any) Option {
 // V is alias of Value
 func V(key string, value any) Option {
 	return Value(key, value)
+}
+
+// ID sets an error ID for Is() comparison.
+// Empty string ("") is treated as an invalid ID and will not be used for comparison.
+// When ID is set, errors.Is() will compare errors by ID instead of pointer equality.
+func ID(id string) Option {
+	return func(err *Error) {
+		err.id = id
+	}
 }
 
 // TypedValue sets typed key and value to the error
@@ -147,7 +154,7 @@ func (x values) clone() values {
 // Error is error interface for deepalert to handle related variables
 type Error struct {
 	msg         string
-	id          string
+	id          string // Default is empty string (""). Empty string is treated as invalid ID and will not be used for Is() comparison
 	st          *stack
 	cause       error
 	values      values         // String-based values
@@ -160,7 +167,7 @@ func newError(options ...Option) *Error {
 		st:          callers(),
 		values:      make(values),
 		typedValues: make(map[string]any),
-		id:          uuid.New().String(),
+		id:          "", // Default to empty string. Empty string is treated as invalid ID
 		tags:        make(tags),
 	}
 
@@ -289,7 +296,10 @@ func (x *Error) UnstackN(n int) *Error {
 	return x
 }
 
-// Is returns true if target is goerr.Error and Error.id of two errors are matched. It's for errors.Is. If Error.id is empty, it always returns false.
+// Is returns true if the target error matches this error. It's for errors.Is.
+// If both errors have IDs set via goerr.ID() option (non-empty), they are compared by ID.
+// Otherwise, pointer equality is used for comparison.
+// Empty ID values (default) are not used for comparison.
 func (x *Error) Is(target error) bool {
 	var err *Error
 	if errors.As(target, &err) {
@@ -299,12 +309,6 @@ func (x *Error) Is(target error) bool {
 	}
 
 	return x == target
-}
-
-// ID sets string to check equality in Error.IS()
-func (x *Error) ID(id string) *Error {
-	x.id = id
-	return x
 }
 
 // Wrap creates a new Error and copy message and id to new one.

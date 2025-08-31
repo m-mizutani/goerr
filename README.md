@@ -2,8 +2,6 @@
 
 Contextual and structured error handling library for Go
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/m-mizutani/goerr.svg)](https://pkg.go.dev/github.com/m-mizutani/goerr)
-
 ## Overview
 
 `goerr` is a powerful error handling library for Go that enhances errors with rich contextual information. It provides stack traces, contextual variables, error categorization, and seamless integration with structured logging - all while maintaining full compatibility with Go's standard error handling patterns.

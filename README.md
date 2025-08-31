@@ -302,7 +302,7 @@ See the [examples](./examples) directory for complete working examples:
 
 ## Migration Guide
 
-See [Migration Guide](./docs/migration_v2.md) for migrating from:
+See [Migration Guide](./docs/migration.md) for migrating from:
 - `github.com/pkg/errors`
 - Standard library `errors` package
 - goerr v1 to v2

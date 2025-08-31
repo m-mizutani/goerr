@@ -41,7 +41,7 @@ func main() {
 }
 
 func processFile(filename string) error {
-    data, err := readFile(filename)
+    _, err := readFile(filename)
     if err != nil {
         return goerr.Wrap(err, "failed to process file",
             goerr.Value("filename", filename))

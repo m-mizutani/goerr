@@ -38,9 +38,27 @@ fmt.Printf("%+v", err)  // Prints with stack trace (same format)
 | `errors.Wrap()` | `goerr.Wrap()` | Direct replacement |
 | `errors.Wrapf()` | `goerr.Wrap(err, fmt.Sprintf(...))` | Use fmt.Sprintf for formatting |
 | `errors.WithStack()` | `goerr.Wrap(err, err.Error())` | Wraps with same message |
-| `errors.Cause()` | `errors.Unwrap()` (standard) | Use standard library |
+| `errors.Cause()` | See below* | Requires loop for root cause |
 | `errors.Is()` | `errors.Is()` (standard) | Use standard library |
 | `errors.As()` | `errors.As()` (standard) | Use standard library |
+
+*For `errors.Cause()` replacement:
+```go
+// pkg/errors.Cause() gets the root cause
+rootCause := errors.Cause(err)
+
+// goerr equivalent - loop to get root cause
+func getRootCause(err error) error {
+    for {
+        unwrapped := errors.Unwrap(err)
+        if unwrapped == nil {
+            return err
+        }
+        err = unwrapped
+    }
+}
+rootCause := getRootCause(err)
+```
 
 ### Additional Benefits
 

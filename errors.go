@@ -5,228 +5,252 @@ import (
 	"errors"
 	"fmt"
 	"io"
-
 	"log/slog"
+	"strconv"
+	"strings"
 )
 
-type Option func(*Error)
+// Errors represents multiple errors as a single error
+type Errors struct {
+	errs []error
+}
 
-// Value sets key and value to the error
-func Value(key string, value any) Option {
-	return func(err *Error) {
-		err.values[key] = value
+// Error implements error interface
+func (x *Errors) Error() string {
+	if x == nil || len(x.errs) == 0 {
+		return ""
+	}
+
+	if len(x.errs) == 1 {
+		return x.errs[0].Error()
+	}
+
+	var messages []string
+	for _, err := range x.errs {
+		messages = append(messages, err.Error())
+	}
+	return strings.Join(messages, "\n")
+}
+
+// Unwrap returns all wrapped errors for Go 1.20+ multiple errors support
+func (x *Errors) Unwrap() []error {
+	if x == nil || len(x.errs) == 0 {
+		return nil
+	}
+
+	// Return a copy to prevent external modification
+	result := make([]error, len(x.errs))
+	copy(result, x.errs)
+	return result
+}
+
+// Is checks if any wrapped error matches target
+func (x *Errors) Is(target error) bool {
+	if x == nil {
+		return false
+	}
+
+	for _, err := range x.errs {
+		if errors.Is(err, target) {
+			return true
+		}
+	}
+	return false
+}
+
+// As finds the first error that matches target type
+func (x *Errors) As(target any) bool {
+	if x == nil {
+		return false
+	}
+
+	for _, err := range x.errs {
+		if errors.As(err, target) {
+			return true
+		}
+	}
+	return false
+}
+
+// Join creates a new Errors by combining multiple errors
+func Join(errs ...error) *Errors {
+	filtered := make([]error, 0, len(errs))
+	for _, err := range errs {
+		if err != nil {
+			filtered = append(filtered, err)
+		}
+	}
+
+	if len(filtered) == 0 {
+		return nil
+	}
+
+	return &Errors{
+		errs: filtered,
 	}
 }
 
-// V is alias of Value
-func V(key string, value any) Option {
-	return Value(key, value)
-}
-
-// ID sets an error ID for Is() comparison.
-// Empty string ("") is treated as an invalid ID and will not be used for comparison.
-// When ID is set, errors.Is() will compare errors by ID instead of pointer equality.
-func ID(id string) Option {
-	return func(err *Error) {
-		err.id = id
+// Append adds errors to existing Errors (inspired by go-multierror)
+// If base is nil, creates a new Errors. Flattens nested Errors.
+func Append(base *Errors, errs ...error) *Errors {
+	if len(errs) == 0 {
+		return base
 	}
-}
 
-// Tag sets tag to the error
-func Tag(t tag) Option {
-	return func(err *Error) {
-		err.tags[t] = struct{}{}
+	// Create new Errors if base is nil (go-multierror pattern)
+	if base == nil {
+		base = &Errors{
+			errs: make([]error, 0),
+		}
 	}
+
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+
+		// Flatten nested Errors (go-multierror pattern)
+		if nestedErrs, ok := err.(*Errors); ok {
+			base.errs = append(base.errs, nestedErrs.errs...)
+		} else {
+			base.errs = append(base.errs, err)
+		}
+	}
+
+	return base
 }
 
-// T is alias of Tag
-func T(t tag) Option {
-	return Tag(t)
-}
-
-// New creates a new error with message
-func New(msg string, options ...Option) *Error {
-	err := newError(options...)
-	err.msg = msg
-	return err
-}
-
-// Wrap creates a new Error and add message.
-func Wrap(cause error, msg string, options ...Option) *Error {
-	err := newError(options...)
-	err.msg = msg
-	err.cause = cause
-
-	return err
-}
-
-// Unwrap returns unwrapped goerr.Error from err by errors.As. If no goerr.Error, returns nil
-// NOTE: Do not receive error interface. It causes typed-nil problem.
-//
-//	var err error = goerr.New("error")
-//	if err != nil { // always true
-func Unwrap(err error) *Error {
-	var e *Error
+// AsErrors extracts goerr.Errors from err by errors.As. If no goerr.Errors, returns nil
+// Complementary to goerr.Unwrap() which only extracts goerr.Error
+func AsErrors(err error) *Errors {
+	var e *Errors
 	if errors.As(err, &e) {
 		return e
 	}
 	return nil
 }
 
-// Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
-func Values(err error) map[string]any {
-	if e := Unwrap(err); e != nil {
-		return e.Values()
-	}
-
-	return nil
+// IsEmpty returns true if no errors are contained
+func (x *Errors) IsEmpty() bool {
+	return x == nil || len(x.errs) == 0
 }
 
-// Tags returns list of tags that is set by WithTags. All wrapped goerr.Error tags will be merged. Tags of wrapped error is overwritten by upper goerr.Error.
-func Tags(err error) []string {
-	if e := Unwrap(err); e != nil {
-		return e.Tags()
+// Len returns the number of wrapped errors
+func (x *Errors) Len() int {
+	if x == nil {
+		return 0
 	}
-
-	return nil
+	return len(x.errs)
 }
 
-// HasTag returns true if the error has the tag.
-func HasTag(err error, tag tag) bool {
-	if e := Unwrap(err); e != nil {
-		return e.HasTag(tag)
+// ErrorOrNil returns the error if non-empty, nil otherwise (inspired by go-multierror)
+// Nil-safe: (*goerr.Errors)(nil).ErrorOrNil() returns nil
+func (x *Errors) ErrorOrNil() error {
+	if x == nil || len(x.errs) == 0 {
+		return nil
+	}
+	return x
+}
+
+// Errors returns the slice of wrapped errors (inspired by go-multierror.WrappedErrors)
+func (x *Errors) Errors() []error {
+	if x == nil || len(x.errs) == 0 {
+		return nil
 	}
 
+	// Return a copy to prevent external modification
+	result := make([]error, len(x.errs))
+	copy(result, x.errs)
+	return result
+}
+
+// HasTag checks if any wrapped error has the specified tag
+func (x *Errors) HasTag(tag tag) bool {
+	if x == nil {
+		return false
+	}
+
+	// Check wrapped errors
+	for _, err := range x.errs {
+		if HasTag(err, tag) {
+			return true
+		}
+	}
 	return false
 }
 
-type values map[string]any
-
-func (x values) clone() values {
-	newValues := make(values)
-	for key, value := range x {
-		newValues[key] = value
-	}
-	return newValues
+// ErrorsJSON represents JSON structure for Errors
+type ErrorsJSON struct {
+	Errors []any `json:"errors"`
 }
 
-// Error is error interface for deepalert to handle related variables
-type Error struct {
-	msg         string
-	id          string // Default is empty string (""). Empty string is treated as invalid ID and will not be used for Is() comparison
-	st          *stack
-	cause       error
-	values      values         // String-based values
-	typedValues map[string]any // Type-safe values
-	tags        tags
+// MarshalJSON implements json.Marshaler interface for Errors type
+func (x *Errors) MarshalJSON() ([]byte, error) {
+	if x == nil {
+		return []byte("null"), nil
+	}
+
+	result := ErrorsJSON{
+		Errors: make([]any, len(x.errs)),
+	}
+
+	// Serialize each error
+	for i, err := range x.errs {
+		if goErr := Unwrap(err); goErr != nil {
+			result.Errors[i] = goErr.Printable()
+		} else if marshaler, ok := err.(json.Marshaler); ok {
+			data, marshalErr := marshaler.MarshalJSON()
+			if marshalErr != nil {
+				result.Errors[i] = err.Error()
+			} else {
+				result.Errors[i] = json.RawMessage(data)
+			}
+		} else {
+			result.Errors[i] = err.Error()
+		}
+	}
+
+	return json.Marshal(result)
 }
 
-func newError(options ...Option) *Error {
-	e := &Error{
-		st:          callers(),
-		values:      make(values),
-		typedValues: make(map[string]any),
-		id:          "", // Default to empty string. Empty string is treated as invalid ID
-		tags:        make(tags),
+// LogValue implements slog.LogValuer interface for structured logging
+func (x *Errors) LogValue() slog.Value {
+	if x == nil {
+		return slog.AnyValue(nil)
 	}
 
-	for _, opt := range options {
-		opt(e)
+	attrs := []slog.Attr{
+		slog.Int("count", len(x.errs)),
 	}
 
-	return e
+	// Add individual errors
+	errorAttrs := make([]any, 0, len(x.errs)*2)
+	for i, err := range x.errs {
+		key := strconv.Itoa(i)
+		if lv, ok := err.(slog.LogValuer); ok {
+			errorAttrs = append(errorAttrs, key, lv.LogValue())
+		} else {
+			errorAttrs = append(errorAttrs, key, err.Error())
+		}
+	}
+	attrs = append(attrs, slog.Group("errors", errorAttrs...))
+
+	return slog.GroupValue(attrs...)
 }
 
-func (x *Error) copy(dst *Error, options ...Option) {
-	dst.msg = x.msg
-	dst.id = x.id
-	dst.cause = x.cause
-
-	dst.tags = x.tags.clone()
-	dst.values = x.values.clone()
-
-	// Clone typed values
-	dst.typedValues = make(map[string]any)
-	for key, value := range x.typedValues {
-		dst.typedValues[key] = value
+// Format implements fmt.Formatter interface
+func (x *Errors) Format(s fmt.State, verb rune) {
+	if x == nil {
+		return
 	}
 
-	for _, opt := range options {
-		opt(dst)
-	}
-	// st (stacktrace) is not copied
-}
-
-// Printable returns printable object
-func (x *Error) Printable() *Printable {
-	e := &Printable{
-		Message:     x.msg,
-		ID:          x.id,
-		StackTrace:  x.Stacks(),
-		Values:      x.Values(),      // Use Values() to get merged string-based values from wrapped errors
-		TypedValues: x.TypedValues(), // Use TypedValues() to get merged typed values from wrapped errors
-		Tags:        x.Tags(),        // Use Tags() to get merged tags from wrapped errors
-	}
-
-	if cause := Unwrap(x.cause); cause != nil {
-		e.Cause = cause.Printable()
-	} else if x.cause != nil {
-		e.Cause = x.cause.Error()
-	}
-	return e
-}
-
-type Printable struct {
-	Message     string         `json:"message"`
-	ID          string         `json:"id"`
-	StackTrace  []*Stack       `json:"stacktrace"`
-	Cause       any            `json:"cause"`
-	Values      map[string]any `json:"values"`
-	TypedValues map[string]any `json:"typed_values"`
-	Tags        []string       `json:"tags"`
-}
-
-// Error returns error message for error interface
-func (x *Error) Error() string {
-	if x.cause == nil {
-		return x.msg
-	}
-
-	return fmt.Sprintf("%s: %v", x.msg, x.cause.Error())
-}
-
-// Format returns:
-// - %v, %s, %q: formatted message
-// - %+v: formatted message with stack trace
-func (x *Error) Format(s fmt.State, verb rune) {
 	switch verb {
 	case 'v':
 		if s.Flag('+') {
-			_, _ = io.WriteString(s, x.Error())
-			var c *Error
-			for c = x; c.Unwrap() != nil; {
-				cause, ok := c.Unwrap().(*Error)
-				if !ok {
-					break
-				}
-				c = cause
-			}
-			c.st.Format(s, verb)
-			_, _ = io.WriteString(s, "\n")
-
-			if len(x.values) > 0 {
-				_, _ = io.WriteString(s, "\nValues:\n")
-				for k, v := range x.values {
-					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, v))
-				}
-				_, _ = io.WriteString(s, "\n")
-			}
-			if len(x.typedValues) > 0 {
-				_, _ = io.WriteString(s, "\nTyped Values:\n")
-				for k, v := range x.typedValues {
-					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, v))
-				}
-				_, _ = io.WriteString(s, "\n")
+			// Detailed format with all error details
+			fmt.Fprintf(s, "Errors (%d):\n", len(x.errs))
+			for i, err := range x.errs {
+				fmt.Fprintf(s, "  [%d] %+v\n", i, err)
 			}
 			return
 		}
@@ -236,195 +260,4 @@ func (x *Error) Format(s fmt.State, verb rune) {
 	case 'q':
 		fmt.Fprintf(s, "%q", x.Error())
 	}
-}
-
-// Unwrap returns *fundamental of github.com/pkg/errors
-func (x *Error) Unwrap() error {
-	return x.cause
-}
-
-// Unstack trims stack trace by 1. It can be used for internal helper or utility functions.
-func (x *Error) Unstack() *Error {
-	x.st = unstack(x.st, 1)
-	return x
-}
-
-// UnstackN trims stack trace by n. It can be used for internal helper or utility functions.
-func (x *Error) UnstackN(n int) *Error {
-	x.st = unstack(x.st, n)
-	return x
-}
-
-// Is returns true if the target error matches this error. It's for errors.Is.
-// If both errors have IDs set via goerr.ID() option (non-empty), they are compared by ID.
-// Otherwise, pointer equality is used for comparison.
-// Empty ID values (default) are not used for comparison.
-func (x *Error) Is(target error) bool {
-	var err *Error
-	if errors.As(target, &err) {
-		if x.id != "" && x.id == err.id {
-			return true
-		}
-	}
-
-	return x == target
-}
-
-// Wrap creates a new Error and copy message and id to new one.
-func (x *Error) Wrap(cause error, options ...Option) *Error {
-	err := newError()
-	x.copy(err, options...)
-	err.cause = cause
-	return err
-}
-
-// Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
-func (x *Error) Values() map[string]any {
-	values := x.mergedValues()
-
-	// Add string-based values
-	for key, value := range x.values {
-		values[key] = value
-	}
-
-	return values
-}
-
-// TypedValues returns map of key and value that is set by TypedValue. All wrapped goerr.Error typed key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
-func (x *Error) TypedValues() map[string]any {
-	typedValues := x.mergedTypedValues()
-
-	// Add typed values
-	for key, value := range x.typedValues {
-		typedValues[key] = value
-	}
-
-	return typedValues
-}
-
-func (x *Error) mergedValues() values {
-	merged := make(values)
-
-	if cause := x.Unwrap(); cause != nil {
-		if err := Unwrap(cause); err != nil {
-			merged = err.mergedValues()
-		}
-	}
-
-	// Merge string-based values
-	for key, value := range x.values {
-		merged[key] = value
-	}
-
-	return merged
-}
-
-func (x *Error) mergedTypedValues() map[string]any {
-	merged := make(map[string]any)
-
-	if cause := x.Unwrap(); cause != nil {
-		if err := Unwrap(cause); err != nil {
-			merged = err.mergedTypedValues()
-		}
-	}
-
-	// Merge typed values
-	for key, value := range x.typedValues {
-		merged[key] = value
-	}
-
-	return merged
-}
-
-// Tags returns list of tags that is set by WithTags. All wrapped goerr.Error tags will be merged. Tags of wrapped error is overwritten by upper goerr.Error.
-func (x *Error) Tags() []string {
-	tags := x.mergedTags()
-
-	for tag := range x.tags {
-		tags[tag] = struct{}{}
-	}
-
-	tagList := make([]string, 0, len(tags))
-	for tag := range tags {
-		tagList = append(tagList, tag.value)
-	}
-
-	return tagList
-}
-
-func (x *Error) mergedTags() tags {
-	merged := make(tags)
-
-	if cause := x.Unwrap(); cause != nil {
-		if err := Unwrap(cause); err != nil {
-			merged = err.mergedTags()
-		}
-	}
-
-	for tag := range x.tags {
-		merged[tag] = struct{}{}
-	}
-
-	return merged
-}
-
-// LogValue returns slog.Value for structured logging. It's implementation of slog.LogValuer.
-// https://pkg.go.dev/log/slog#LogValuer
-func (x *Error) LogValue() slog.Value {
-	if x == nil {
-		return slog.AnyValue(nil)
-	}
-
-	attrs := []slog.Attr{
-		slog.String("message", x.msg),
-	}
-
-	var values []any
-	for k, v := range x.values {
-		values = append(values, slog.Any(k, v))
-	}
-	attrs = append(attrs, slog.Group("values", values...))
-
-	var typedValues []any
-	for k, v := range x.typedValues {
-		typedValues = append(typedValues, slog.Any(k, v))
-	}
-	attrs = append(attrs, slog.Group("typed_values", typedValues...))
-
-	var tags []string
-	for tag := range x.tags {
-		tags = append(tags, tag.value)
-	}
-	attrs = append(attrs, slog.Any("tags", tags))
-
-	var stacktrace any
-	var traces []string
-	for _, st := range x.StackTrace() {
-		traces = append(traces, fmt.Sprintf("%s:%d %s", st.getFilePath(), st.getLineNumber(), st.getFunctionName()))
-	}
-	stacktrace = traces
-
-	attrs = append(attrs, slog.Any("stacktrace", stacktrace))
-
-	if x.cause != nil {
-		var errAttr slog.Attr
-		if lv, ok := x.cause.(slog.LogValuer); ok {
-			errAttr = slog.Any("cause", lv.LogValue())
-		} else {
-			errAttr = slog.Any("cause", x.cause)
-		}
-		attrs = append(attrs, errAttr)
-	}
-
-	return slog.GroupValue(attrs...)
-}
-
-// MarshalJSON implements json.Marshaler interface for Error type.
-// It provides comprehensive JSON serialization including message, ID,
-// stack trace, values, tags, and cause information.
-func (x *Error) MarshalJSON() ([]byte, error) {
-	if x == nil {
-		return []byte("null"), nil
-	}
-	return json.Marshal(x.Printable())
 }

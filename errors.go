@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"strconv"
 	"strings"
 )
 
@@ -198,10 +199,12 @@ func (x *Errors) MarshalJSON() ([]byte, error) {
 		if goErr := Unwrap(err); goErr != nil {
 			result.Errors[i] = goErr.Printable()
 		} else if marshaler, ok := err.(json.Marshaler); ok {
-			data, _ := marshaler.MarshalJSON()
-			var obj any
-			_ = json.Unmarshal(data, &obj)
-			result.Errors[i] = obj
+			data, marshalErr := marshaler.MarshalJSON()
+			if marshalErr != nil {
+				result.Errors[i] = err.Error()
+			} else {
+				result.Errors[i] = json.RawMessage(data)
+			}
 		} else {
 			result.Errors[i] = err.Error()
 		}
@@ -221,12 +224,13 @@ func (x *Errors) LogValue() slog.Value {
 	}
 
 	// Add individual errors
-	errorAttrs := make([]any, len(x.errs))
+	errorAttrs := make([]any, 0, len(x.errs)*2)
 	for i, err := range x.errs {
+		key := strconv.Itoa(i)
 		if lv, ok := err.(slog.LogValuer); ok {
-			errorAttrs[i] = lv.LogValue()
+			errorAttrs = append(errorAttrs, key, lv.LogValue())
 		} else {
-			errorAttrs[i] = err.Error()
+			errorAttrs = append(errorAttrs, key, err.Error())
 		}
 	}
 	attrs = append(attrs, slog.Group("errors", errorAttrs...))

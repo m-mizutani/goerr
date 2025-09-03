@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
 
 	"log/slog"
 )
@@ -93,13 +94,14 @@ func Tags(err error) []string {
 
 // HasTag returns true if the error has the tag.
 func HasTag(err error, tag tag) bool {
-	if e := Unwrap(err); e != nil {
-		return e.HasTag(tag)
-	}
-
-	// Check for Errors type using AsErrors
+	// Check for Errors type first using AsErrors
 	if errs := AsErrors(err); errs != nil {
 		return errs.HasTag(tag)
+	}
+
+	// Check for Error type using Unwrap
+	if e := Unwrap(err); e != nil {
+		return e.HasTag(tag)
 	}
 
 	return false
@@ -219,17 +221,34 @@ func (x *Error) Format(s fmt.State, verb rune) {
 			c.st.Format(s, verb)
 			_, _ = io.WriteString(s, "\n")
 
-			if len(x.values) > 0 {
+			// Use merged values from entire error chain
+			mergedValues := x.Values()
+			if len(mergedValues) > 0 {
 				_, _ = io.WriteString(s, "\nValues:\n")
-				for k, v := range x.values {
-					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, v))
+				// Sort keys for predictable output
+				keys := make([]string, 0, len(mergedValues))
+				for k := range mergedValues {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				for _, k := range keys {
+					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, mergedValues[k]))
 				}
 				_, _ = io.WriteString(s, "\n")
 			}
-			if len(x.typedValues) > 0 {
+
+			// Use merged typed values from entire error chain
+			mergedTypedValues := x.TypedValues()
+			if len(mergedTypedValues) > 0 {
 				_, _ = io.WriteString(s, "\nTyped Values:\n")
-				for k, v := range x.typedValues {
-					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, v))
+				// Sort keys for predictable output
+				keys := make([]string, 0, len(mergedTypedValues))
+				for k := range mergedTypedValues {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				for _, k := range keys {
+					_, _ = io.WriteString(s, fmt.Sprintf("  %s: %v\n", k, mergedTypedValues[k]))
 				}
 				_, _ = io.WriteString(s, "\n")
 			}
@@ -285,26 +304,12 @@ func (x *Error) Wrap(cause error, options ...Option) *Error {
 
 // Values returns map of key and value that is set by With. All wrapped goerr.Error key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
 func (x *Error) Values() map[string]any {
-	values := x.mergedValues()
-
-	// Add string-based values
-	for key, value := range x.values {
-		values[key] = value
-	}
-
-	return values
+	return x.mergedValues()
 }
 
 // TypedValues returns map of key and value that is set by TypedValue. All wrapped goerr.Error typed key and values will be merged. Key and values of wrapped error is overwritten by upper goerr.Error.
 func (x *Error) TypedValues() map[string]any {
-	typedValues := x.mergedTypedValues()
-
-	// Add typed values
-	for key, value := range x.typedValues {
-		typedValues[key] = value
-	}
-
-	return typedValues
+	return x.mergedTypedValues()
 }
 
 func (x *Error) mergedValues() values {

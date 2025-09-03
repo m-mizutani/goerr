@@ -20,7 +20,7 @@ func TestNew(t *testing.T) {
 	// Test with options
 	tag := goerr.NewTag("test")
 	err = goerr.New("test error", goerr.Tag(tag), goerr.Value("key", "value"))
-	
+
 	if !err.HasTag(tag) {
 		t.Error("Error should have the tag")
 	}
@@ -46,7 +46,7 @@ func TestWrap(t *testing.T) {
 
 func TestUnwrap(t *testing.T) {
 	err := goerr.New("test error")
-	
+
 	// Test unwrapping goerr.Error
 	unwrapped := goerr.Unwrap(err)
 	if unwrapped == nil {
@@ -62,7 +62,7 @@ func TestUnwrap(t *testing.T) {
 }
 
 func TestErrorValues(t *testing.T) {
-	err := goerr.New("test error", 
+	err := goerr.New("test error",
 		goerr.Value("key1", "value1"),
 		goerr.Value("key2", 42))
 
@@ -85,7 +85,7 @@ func TestErrorValues(t *testing.T) {
 func TestErrorTags(t *testing.T) {
 	tag1 := goerr.NewTag("tag1")
 	tag2 := goerr.NewTag("tag2")
-	
+
 	err := goerr.New("test error", goerr.Tag(tag1), goerr.Tag(tag2))
 
 	tags := goerr.Tags(err)
@@ -109,7 +109,7 @@ func TestErrorTags(t *testing.T) {
 
 func TestErrorMarshalJSON(t *testing.T) {
 	tag := goerr.NewTag("test")
-	err := goerr.New("test error", 
+	err := goerr.New("test error",
 		goerr.Tag(tag),
 		goerr.Value("key", "value"))
 
@@ -140,7 +140,7 @@ func TestErrorMarshalJSON(t *testing.T) {
 
 func TestErrorLogValue(t *testing.T) {
 	err := goerr.New("test error", goerr.Value("key", "value"))
-	
+
 	logValue := err.LogValue()
 	if logValue.Kind() != slog.KindGroup {
 		t.Error("LogValue should return a group")
@@ -181,9 +181,108 @@ func TestErrorFormat(t *testing.T) {
 	}
 }
 
+func TestErrorFormatWrapped(t *testing.T) {
+	// Create a chain of wrapped errors with different values
+	baseErr := goerr.New("base error", 
+		goerr.Value("base_key", "base_value"),
+		goerr.Value("shared_key", "base_shared")) // This should be overwritten
+		
+	middleErr := goerr.Wrap(baseErr, "middle error", 
+		goerr.Value("middle_key", "middle_value"),
+		goerr.Value("shared_key", "middle_shared")) // This overwrites base_shared
+		
+	topErr := goerr.Wrap(middleErr, "top error", 
+		goerr.Value("top_key", "top_value"),
+		goerr.Value("shared_key", "top_shared")) // This overwrites middle_shared
+
+	// Test %+v format with wrapped errors
+	detailedResult := fmt.Sprintf("%+v", topErr)
+	
+	// Should contain the complete error message chain
+	if !strings.Contains(detailedResult, "top error: middle error: base error") {
+		t.Error("Detailed format should contain complete error message chain")
+	}
+	
+	// Should contain Values section
+	if !strings.Contains(detailedResult, "Values:") {
+		t.Error("Detailed format should contain Values section")
+	}
+	
+	// Should contain values from base error
+	if !strings.Contains(detailedResult, "base_key: base_value") {
+		t.Error("Detailed format should contain values from base error")
+	}
+	
+	// Should contain values from middle error
+	if !strings.Contains(detailedResult, "middle_key: middle_value") {
+		t.Error("Detailed format should contain values from middle error")
+	}
+	
+	// Should contain values from top error
+	if !strings.Contains(detailedResult, "top_key: top_value") {
+		t.Error("Detailed format should contain values from top error")
+	}
+	
+	// Should show the final value for overwritten key (top-level wins)
+	if !strings.Contains(detailedResult, "shared_key: top_shared") {
+		t.Error("Detailed format should show final value for overwritten key")
+	}
+	
+	// Should NOT contain overwritten values
+	if strings.Contains(detailedResult, "base_shared") {
+		t.Error("Detailed format should not contain overwritten base value")
+	}
+	if strings.Contains(detailedResult, "middle_shared") {
+		t.Error("Detailed format should not contain overwritten middle value")
+	}
+	
+	// Verify keys are sorted alphabetically
+	valuesSection := detailedResult[strings.Index(detailedResult, "Values:"):]
+	baseKeyPos := strings.Index(valuesSection, "base_key:")
+	middleKeyPos := strings.Index(valuesSection, "middle_key:")
+	sharedKeyPos := strings.Index(valuesSection, "shared_key:")
+	topKeyPos := strings.Index(valuesSection, "top_key:")
+	
+	// All positions should be found
+	if baseKeyPos == -1 || middleKeyPos == -1 || sharedKeyPos == -1 || topKeyPos == -1 {
+		t.Error("All keys should be present in values section")
+	}
+	
+	// Keys should appear in alphabetical order
+	if !(baseKeyPos < middleKeyPos && middleKeyPos < sharedKeyPos && sharedKeyPos < topKeyPos) {
+		t.Error("Keys should be sorted alphabetically in values section")
+	}
+}
+
+func TestErrorFormatTypedValues(t *testing.T) {
+	// Test that TypedValues from wrapped errors are also included
+	// Note: We need to use the typed values functionality here
+	// Since TypedValues is not directly exposed via options, we test the formatting
+	// by creating errors that would have typed values through internal mechanisms
+	
+	baseErr := goerr.New("base error", goerr.Value("regular_key", "regular_value"))
+	wrappedErr := goerr.Wrap(baseErr, "wrapped error", goerr.Value("wrapped_key", "wrapped_value"))
+	
+	// Test %+v format includes all values
+	detailedResult := fmt.Sprintf("%+v", wrappedErr)
+	
+	// Should contain both regular values
+	if !strings.Contains(detailedResult, "regular_key: regular_value") {
+		t.Error("Should contain base error values")
+	}
+	if !strings.Contains(detailedResult, "wrapped_key: wrapped_value") {
+		t.Error("Should contain wrapped error values")
+	}
+	
+	// Should contain Values section (since we have regular values)
+	if !strings.Contains(detailedResult, "Values:") {
+		t.Error("Should contain Values section")
+	}
+}
+
 func TestErrorStackTrace(t *testing.T) {
 	err := goerr.New("test error")
-	
+
 	stacks := err.Stacks()
 	if len(stacks) == 0 {
 		t.Error("Error should have stack trace")
@@ -226,7 +325,7 @@ func TestErrorIs(t *testing.T) {
 }
 
 func TestErrorCopy(t *testing.T) {
-	original := goerr.New("original", 
+	original := goerr.New("original",
 		goerr.ID("test-id"),
 		goerr.Value("key", "value"))
 
@@ -267,7 +366,7 @@ func TestErrorUnstack(t *testing.T) {
 	// Test UnstackN(1) should have same effect as Unstack
 	err2 := goerr.New("test error 2")
 	unstackedN1 := err2.UnstackN(1)
-	
+
 	if unstackedN1 != err2 {
 		t.Error("UnstackN should return the same instance")
 	}

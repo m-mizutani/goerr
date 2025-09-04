@@ -11,6 +11,7 @@ Enhanced error handling for Go with stack traces, contextual values, and structu
 - **Rich Stack Traces**: Automatic capture with `github.com/pkg/errors` compatibility
 - **Contextual Variables**: Attach key-value pairs to errors for better debugging
 - **Type-Safe Values**: Compile-time type checking for error context using generics
+- **Multiple Error Handling**: Aggregate and manage multiple errors with `goerr.Errors`
 - **Error Categorization**: Tag-based error classification for different handling strategies
 - **Structured Logging**: Native `slog` integration with recursive error details
 - **Error Identity**: ID-based error comparison for flexible error matching
@@ -79,6 +80,33 @@ err = goerr.Wrap(err, "user not found",
 if goErr := goerr.Unwrap(err); goErr != nil {
     values := goErr.Values() // Get all contextual values
 }
+```
+
+### Multiple Error Handling
+
+Aggregate multiple errors with `goerr.Errors`:
+
+```go
+// Collect errors during processing
+var errs *goerr.Errors
+for _, item := range items {
+    if err := processItem(item); err != nil {
+        errs = goerr.Append(errs, err)  // nil-safe
+    }
+}
+
+// Return only if errors occurred
+return errs.ErrorOrNil()  // nil if no errors
+
+// Join errors directly
+combined := goerr.Join(err1, err2, err3)
+
+// All errors displayed together
+fmt.Printf("%v", combined)
+// Output: error1\nerror2\nerror3
+
+// Works with standard library
+if errors.Is(combined, err1) { /* true */ }
 ```
 
 ### Contextual Data
@@ -295,6 +323,7 @@ jsonData, _ := json.Marshal(err)
 See the [examples](./examples) directory for complete working examples:
 - Stack trace handling
 - Contextual variables
+- Multiple error aggregation
 - HTTP error responses
 - Sentry integration
 - Structured logging with slog

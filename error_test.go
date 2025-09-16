@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -765,10 +766,8 @@ func TestWith_KeyPrecedence(t *testing.T) {
 			"key4": "final_val4", // From final step
 		}
 
-		for key, expected := range expectedValues {
-			if values[key] != expected {
-				t.Errorf("Key %s: expected %v, got %v", key, expected, values[key])
-			}
+		if !reflect.DeepEqual(values, expectedValues) {
+			t.Errorf("Final values mismatch.\nGot:  %v\nWant: %v", values, expectedValues)
 		}
 
 		// Check typed value
@@ -778,11 +777,18 @@ func TestWith_KeyPrecedence(t *testing.T) {
 
 		// Original should remain unchanged
 		originalValues := original.Values()
-		if originalValues["key1"] != "orig1" || originalValues["key2"] != "orig2" {
-			t.Error("Original error values were modified")
+		expectedOriginalValues := map[string]any{
+			"key1": "orig1",
+			"key2": "orig2",
+		}
+		if !reflect.DeepEqual(originalValues, expectedOriginalValues) {
+			t.Errorf("Original error string values were modified.\nGot:  %v\nWant: %v", originalValues, expectedOriginalValues)
 		}
 		if value, ok := goerr.GetTypedValue(original, stringKey); !ok || value != "orig_typed" {
-			t.Error("Original error typed values were modified")
+			t.Error("Original error typed value was modified")
+		}
+		if len(original.TypedValues()) != 1 {
+			t.Errorf("Original error typed values count changed, got %d, want 1", len(original.TypedValues()))
 		}
 	})
 }

@@ -416,12 +416,9 @@ func TestWith_WithGoError(t *testing.T) {
 	withStacks := withAdded.Stacks()
 	originalStacks := original.Stacks()
 	if len(withStacks) != len(originalStacks) {
-		t.Errorf("Expected stacktrace length %d, got %d", len(originalStacks), len(withStacks))
+		t.Fatalf("Expected stacktrace length %d, got %d", len(originalStacks), len(withStacks))
 	}
 	for i, origStack := range originalStacks {
-		if i >= len(withStacks) {
-			break
-		}
 		withStack := withStacks[i]
 		if origStack.File != withStack.File || origStack.Line != withStack.Line || origStack.Func != withStack.Func {
 			t.Errorf("Stack frame %d differs: original=%+v, with=%+v", i, origStack, withStack)

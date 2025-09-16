@@ -242,10 +242,10 @@ func TestErrorsLogValue(t *testing.T) {
 	if logValue.Kind() != slog.KindGroup {
 		t.Error("LogValue should return a group")
 	}
-	
+
 	// Verify the structure of the LogValue directly
 	groupAttrs := logValue.Group()
-	
+
 	// Verify we have the expected attributes: count and errors
 	var countAttr, errorsGroupAttr *slog.Attr
 	for i, attr := range groupAttrs {
@@ -256,7 +256,7 @@ func TestErrorsLogValue(t *testing.T) {
 			errorsGroupAttr = &groupAttrs[i]
 		}
 	}
-	
+
 	// Verify count attribute
 	if countAttr == nil {
 		t.Error("Missing 'count' attribute in errors group")
@@ -266,7 +266,7 @@ func TestErrorsLogValue(t *testing.T) {
 			t.Errorf("Expected count 2, got %v (type: %T)", count, count)
 		}
 	}
-	
+
 	// Verify errors group attribute
 	if errorsGroupAttr == nil {
 		t.Error("Missing 'errors' group attribute")
@@ -275,7 +275,7 @@ func TestErrorsLogValue(t *testing.T) {
 	} else {
 		// Verify the individual error entries have proper key-value structure
 		errorGroupAttrs := errorsGroupAttr.Value.Group()
-		
+
 		// Should have 2 attributes: "0" and "1" (the keys), each with their error message values
 		if len(errorGroupAttrs) != 2 {
 			t.Errorf("Expected 2 attributes in errors group (key-value pairs), got %d", len(errorGroupAttrs))
@@ -291,7 +291,7 @@ func TestErrorsLogValue(t *testing.T) {
 			if errorGroupAttrs[0].Value.Any() != "first error" {
 				t.Errorf("Expected first error value to be 'first error', got %v", errorGroupAttrs[0].Value.Any())
 			}
-			
+
 			// Verify second error (key "1")
 			if errorGroupAttrs[1].Key != "1" {
 				t.Errorf("Expected second key to be '1', got '%s'", errorGroupAttrs[1].Key)
@@ -301,15 +301,15 @@ func TestErrorsLogValue(t *testing.T) {
 			}
 		}
 	}
-	
+
 	// Test that the LogValue is properly structured for the slog.Group fix
 	// This test verifies that we're using proper key-value pairs in slog.Group
 	// which would have been broken before the fix
-	
+
 	// Verify that errors group contains key-value pairs as expected
 	if errorsGroupAttr != nil && errorsGroupAttr.Value.Kind() == slog.KindGroup {
 		errorGroupAttrs := errorsGroupAttr.Value.Group()
-		
+
 		// This is the critical test: the slog.Group should have proper key-value pairs
 		// Before the fix, this would have been malformed
 		for i, attr := range errorGroupAttrs {
@@ -318,7 +318,7 @@ func TestErrorsLogValue(t *testing.T) {
 			if attr.Key != expectedKey {
 				t.Errorf("Error group attribute %d should have key '%s', got '%s'", i, expectedKey, attr.Key)
 			}
-			
+
 			// Each value should be a string (the error message)
 			if attr.Value.Kind() != slog.KindString {
 				t.Errorf("Error group attribute %d should have string value, got %v", i, attr.Value.Kind())
@@ -338,9 +338,9 @@ func TestErrorsLogValueWithGoerr(t *testing.T) {
 	if logValue.Kind() != slog.KindGroup {
 		t.Error("LogValue should return a group")
 	}
-	
+
 	groupAttrs := logValue.Group()
-	
+
 	// Find the errors group
 	var errorsGroupAttr *slog.Attr
 	for i, attr := range groupAttrs {
@@ -349,22 +349,22 @@ func TestErrorsLogValueWithGoerr(t *testing.T) {
 			break
 		}
 	}
-	
+
 	if errorsGroupAttr == nil {
 		t.Fatal("Missing 'errors' group attribute")
 	}
-	
+
 	// Verify the errors group contains LogValue from goerr.Error instances
 	if errorsGroupAttr.Value.Kind() != slog.KindGroup {
 		t.Error("Errors group should be a group")
 	} else {
 		errorGroupAttrs := errorsGroupAttr.Value.Group()
-		
+
 		// Should have 2 entries for the 2 errors
 		if len(errorGroupAttrs) != 2 {
 			t.Errorf("Expected 2 error entries, got %d", len(errorGroupAttrs))
 		}
-		
+
 		// First error should be processed through LogValue (returns a group)
 		if len(errorGroupAttrs) >= 1 {
 			if errorGroupAttrs[0].Key != "0" {
@@ -375,7 +375,7 @@ func TestErrorsLogValueWithGoerr(t *testing.T) {
 				t.Error("First error should be processed through LogValue and return a group")
 			}
 		}
-		
+
 		// Second error should also be processed through LogValue
 		if len(errorGroupAttrs) >= 2 {
 			if errorGroupAttrs[1].Key != "1" {
@@ -388,7 +388,6 @@ func TestErrorsLogValueWithGoerr(t *testing.T) {
 		}
 	}
 }
-
 
 func TestErrorsFormat(t *testing.T) {
 	err1 := fmt.Errorf("first error")

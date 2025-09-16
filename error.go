@@ -199,6 +199,10 @@ func (x *Error) Error() string {
 		return x.msg
 	}
 
+	if x.msg == "" {
+		return x.cause.Error()
+	}
+
 	return fmt.Sprintf("%s: %v", x.msg, x.cause.Error())
 }
 
@@ -437,4 +441,27 @@ func (x *Error) MarshalJSON() ([]byte, error) {
 		return []byte("null"), nil
 	}
 	return json.Marshal(x.Printable())
+}
+
+// With adds contextual information to an error without modifying the original.
+// If err is goerr.Error, creates a new error preserving existing stacktrace and adds only new values/tags.
+// If err is not goerr.Error, wraps it with new stacktrace and adds values/tags.
+func With(err error, options ...Option) *Error {
+	if err == nil {
+		return nil
+	}
+
+	if goErr, ok := err.(*Error); ok {
+		// For goerr.Error, create new error preserving stacktrace
+		newErr := newError()
+		goErr.copy(newErr, options...)
+		newErr.st = goErr.st // Preserve original stacktrace
+		return newErr
+	}
+
+	// For non-goerr.Error, wrap with new stacktrace
+	newErr := newError(options...)
+	newErr.cause = err
+	// Leave msg empty so Error() returns only cause.Error()
+	return newErr
 }

@@ -10,6 +10,7 @@ Enhanced error handling for Go with stack traces, contextual values, and structu
 
 - **Rich Stack Traces**: Automatic capture with `github.com/pkg/errors` compatibility
 - **Contextual Variables**: Attach key-value pairs to errors for better debugging
+- **Immutable Error Enhancement**: Add context without modifying original errors using `With`
 - **Type-Safe Values**: Compile-time type checking for error context using generics
 - **Multiple Error Handling**: Aggregate and manage multiple errors with `goerr.Errors`
 - **Error Categorization**: Tag-based error classification for different handling strategies
@@ -71,10 +72,15 @@ if err := someFunc(); err != nil {
     return goerr.Wrap(err, "operation failed")
 }
 
-// Add contextual information
-err = goerr.Wrap(err, "user not found",
+// Add contextual information without changing the original error
+err = goerr.With(err,
     goerr.Value("user_id", userID),
     goerr.Value("timestamp", time.Now()))
+
+// With preserves stacktrace for goerr.Error, wraps standard errors
+originalErr := goerr.New("original error")
+enhanced := goerr.With(originalErr, goerr.Value("context", "added"))
+// enhanced has same stacktrace as originalErr, originalErr unchanged
 
 // Extract goerr.Error from any error
 if goErr := goerr.Unwrap(err); goErr != nil {
@@ -220,6 +226,28 @@ func helperFunc() error {
 ```
 
 ## Advanced Features
+
+### Enhancing Errors with Context
+
+The `With` function adds contextual information to errors without modifying the original:
+
+```go
+// For goerr.Error: preserves existing stacktrace
+originalErr := goerr.New("database connection failed")
+enhanced := goerr.With(originalErr,
+    goerr.Value("host", "db.example.com"),
+    goerr.Value("port", 5432),
+    goerr.Tag(ErrTagExternal))
+
+// originalErr remains unchanged, enhanced has same stacktrace
+fmt.Printf("Original unchanged: %v\n", originalErr.Values()) // empty
+fmt.Printf("Enhanced: %v\n", enhanced.Values())              // has host, port
+
+// For standard errors: wraps with new stacktrace
+stdErr := errors.New("file not found")
+enhanced2 := goerr.With(stdErr, goerr.Value("path", "/tmp/file.txt"))
+// enhanced2 wraps stdErr with new stacktrace and context
+```
 
 ### Error Identification
 

@@ -8,16 +8,11 @@ Enhanced error handling for Go with stack traces, contextual values, and structu
 
 ## Key Features
 
-- **Rich Stack Traces**: Automatic capture with `github.com/pkg/errors` compatibility
-- **Contextual Variables**: Attach key-value pairs to errors for better debugging
-- **Immutable Error Enhancement**: Add context without modifying original errors using `With`
-- **Type-Safe Values**: Compile-time type checking for error context using generics
-- **Multiple Error Handling**: Aggregate and manage multiple errors with `goerr.Errors`
-- **Error Categorization**: Tag-based error classification for different handling strategies
-- **Structured Logging**: Native `slog` integration with recursive error details
-- **Error Identity**: ID-based error comparison for flexible error matching
-- **Builder Pattern**: Efficient error creation with pre-configured context
-- **JSON Serialization**: Full error details in JSON format for APIs and logging
+- **Stack Traces**: Automatic capture with `github.com/pkg/errors` compatibility
+- **Contextual Data**: Attach key-value pairs and tags to errors
+- **Type Safety**: Compile-time type checking for error context
+- **Multiple Errors**: Aggregate errors with `goerr.Errors`
+- **Structured Logging**: Native `slog` integration
 
 ## Installation
 

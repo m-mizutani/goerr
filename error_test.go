@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -604,4 +605,190 @@ func TestWith_MultipleOptions(t *testing.T) {
 	if len(original.Values()) != 0 {
 		t.Error("Original error was modified")
 	}
+}
+
+func TestWith_KeyPrecedence(t *testing.T) {
+	t.Run("same key within single With call", func(t *testing.T) {
+		original := goerr.New("original error")
+
+		// Same key specified multiple times in single With call
+		enhanced := goerr.With(original,
+			goerr.Value("key1", "first_value"),
+			goerr.Value("key1", "second_value"), // Should override first_value
+			goerr.Value("key1", "final_value"),  // Should override second_value
+		)
+
+		values := enhanced.Values()
+		if values["key1"] != "final_value" {
+			t.Errorf("Expected 'final_value', got %v", values["key1"])
+		}
+
+		// Original should remain unchanged
+		if len(original.Values()) != 0 {
+			t.Error("Original error was modified")
+		}
+	})
+
+	t.Run("consecutive With calls with same key", func(t *testing.T) {
+		original := goerr.New("original error")
+
+		// Multiple With calls with same key
+		step1 := goerr.With(original, goerr.Value("key1", "first_value"))
+		step2 := goerr.With(step1, goerr.Value("key1", "second_value"))
+		final := goerr.With(step2, goerr.Value("key1", "final_value"))
+
+		values := final.Values()
+		if values["key1"] != "final_value" {
+			t.Errorf("Expected 'final_value', got %v", values["key1"])
+		}
+
+		// Previous steps should have their own values
+		if step1.Values()["key1"] != "first_value" {
+			t.Errorf("Step1 should have 'first_value', got %v", step1.Values()["key1"])
+		}
+		if step2.Values()["key1"] != "second_value" {
+			t.Errorf("Step2 should have 'second_value', got %v", step2.Values()["key1"])
+		}
+
+		// Original should remain unchanged
+		if len(original.Values()) != 0 {
+			t.Error("Original error was modified")
+		}
+	})
+
+	t.Run("overwrite existing error key with With", func(t *testing.T) {
+		// Create error with existing key
+		original := goerr.New("original error", goerr.Value("existing_key", "original_value"))
+
+		// Override existing key with With
+		enhanced := goerr.With(original, goerr.Value("existing_key", "new_value"))
+
+		values := enhanced.Values()
+		if values["existing_key"] != "new_value" {
+			t.Errorf("Expected 'new_value', got %v", values["existing_key"])
+		}
+
+		// Original should keep its value
+		originalValues := original.Values()
+		if originalValues["existing_key"] != "original_value" {
+			t.Errorf("Original should keep 'original_value', got %v", originalValues["existing_key"])
+		}
+	})
+
+	t.Run("TypedValue key precedence", func(t *testing.T) {
+		stringKey := goerr.NewTypedKey[string]("typed_key")
+
+		original := goerr.New("original error")
+
+		// Multiple TypedValue with same key
+		enhanced := goerr.With(original,
+			goerr.TV(stringKey, "first_typed_value"),
+			goerr.TV(stringKey, "final_typed_value"), // Should override first
+		)
+
+		// Check via GetTypedValue
+		if value, ok := goerr.GetTypedValue(enhanced, stringKey); !ok || value != "final_typed_value" {
+			t.Errorf("Expected 'final_typed_value', got %v (ok=%v)", value, ok)
+		}
+
+		// Check via TypedValues
+		typedValues := enhanced.TypedValues()
+		if typedValues["typed_key"] != "final_typed_value" {
+			t.Errorf("Expected 'final_typed_value' in TypedValues, got %v", typedValues["typed_key"])
+		}
+
+		// Original should remain unchanged
+		if len(original.TypedValues()) != 0 {
+			t.Error("Original error was modified")
+		}
+	})
+
+	t.Run("mixed Value and TypedValue with same key name", func(t *testing.T) {
+		stringKey := goerr.NewTypedKey[string]("same_key")
+
+		original := goerr.New("original error")
+
+		// Mix string-based Value and TypedValue with same key name
+		enhanced := goerr.With(original,
+			goerr.Value("same_key", "string_value"),
+			goerr.TV(stringKey, "typed_value"),
+		)
+
+		// Both should exist independently
+		values := enhanced.Values()
+		typedValues := enhanced.TypedValues()
+
+		if values["same_key"] != "string_value" {
+			t.Errorf("Expected 'string_value' in Values, got %v", values["same_key"])
+		}
+		if typedValues["same_key"] != "typed_value" {
+			t.Errorf("Expected 'typed_value' in TypedValues, got %v", typedValues["same_key"])
+		}
+
+		// GetTypedValue should return typed value
+		if value, ok := goerr.GetTypedValue(enhanced, stringKey); !ok || value != "typed_value" {
+			t.Errorf("Expected 'typed_value' from GetTypedValue, got %v (ok=%v)", value, ok)
+		}
+	})
+
+	t.Run("complex With chain with multiple overwrites", func(t *testing.T) {
+		stringKey := goerr.NewTypedKey[string]("chain_key")
+
+		// Start with error having some values
+		original := goerr.New("original error",
+			goerr.Value("key1", "orig1"),
+			goerr.Value("key2", "orig2"),
+			goerr.TV(stringKey, "orig_typed"),
+		)
+
+		// Chain multiple With calls with overlapping keys
+		step1 := goerr.With(original,
+			goerr.Value("key1", "step1_val1"), // Override key1
+			goerr.Value("key3", "step1_val3"), // New key
+		)
+
+		step2 := goerr.With(step1,
+			goerr.Value("key2", "step2_val2"),  // Override key2
+			goerr.TV(stringKey, "step2_typed"), // Override typed
+		)
+
+		finalStep := goerr.With(step2,
+			goerr.Value("key1", "final_val1"), // Override key1 again
+			goerr.Value("key4", "final_val4"), // New key
+		)
+
+		// Check final values
+		values := finalStep.Values()
+		expectedValues := map[string]any{
+			"key1": "final_val1", // Final override
+			"key2": "step2_val2", // From step2
+			"key3": "step1_val3", // From step1
+			"key4": "final_val4", // From final step
+		}
+
+		if !reflect.DeepEqual(values, expectedValues) {
+			t.Errorf("Final values mismatch.\nGot:  %v\nWant: %v", values, expectedValues)
+		}
+
+		// Check typed value
+		if value, ok := goerr.GetTypedValue(finalStep, stringKey); !ok || value != "step2_typed" {
+			t.Errorf("Expected 'step2_typed' from GetTypedValue, got %v (ok=%v)", value, ok)
+		}
+
+		// Original should remain unchanged
+		originalValues := original.Values()
+		expectedOriginalValues := map[string]any{
+			"key1": "orig1",
+			"key2": "orig2",
+		}
+		if !reflect.DeepEqual(originalValues, expectedOriginalValues) {
+			t.Errorf("Original error string values were modified.\nGot:  %v\nWant: %v", originalValues, expectedOriginalValues)
+		}
+		if value, ok := goerr.GetTypedValue(original, stringKey); !ok || value != "orig_typed" {
+			t.Error("Original error typed value was modified")
+		}
+		if len(original.TypedValues()) != 1 {
+			t.Errorf("Original error typed values count changed, got %d, want 1", len(original.TypedValues()))
+		}
+	})
 }

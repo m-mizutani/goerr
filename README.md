@@ -77,6 +77,13 @@ originalErr := goerr.New("original error")
 enhanced := goerr.With(originalErr, goerr.Value("context", "added"))
 // enhanced has same stacktrace as originalErr, originalErr unchanged
 
+// Key precedence: later values override earlier ones
+err := goerr.New("error", goerr.Value("key", "first"))
+enhanced := goerr.With(err,
+    goerr.Value("key", "second"),  // Overrides "first"
+    goerr.Value("key", "final"))   // Overrides "second"
+// enhanced.Values()["key"] == "final"
+
 // Extract goerr.Error from any error
 if goErr := goerr.Unwrap(err); goErr != nil {
     values := goErr.Values() // Get all contextual values

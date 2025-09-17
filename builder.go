@@ -5,7 +5,8 @@ type Builder struct {
 	options []Option
 }
 
-// NewBuilder creates a new Builder
+// NewBuilder creates a new Builder.
+// A Builder is useful for creating multiple errors that share a common context, such as a request ID or service name, without repeatedly specifying the same options.
 func NewBuilder(options ...Option) *Builder {
 	return &Builder{
 		options: options,

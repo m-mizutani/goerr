@@ -683,3 +683,29 @@ func TestTypedValueClone(t *testing.T) {
 		}
 	})
 }
+
+func ExampleNewTypedKey() {
+	// Define typed keys at the package level for reuse.
+	var UserIDKey = goerr.NewTypedKey[string]("user_id")
+	var RequestIDKey = goerr.NewTypedKey[int]("request_id")
+
+	// Attach typed values when creating an error.
+	err := goerr.New("request failed",
+		goerr.TV(UserIDKey, "blue"),
+		goerr.TV(RequestIDKey, 12345),
+	)
+
+	// Retrieve the typed value later.
+	if userID, ok := goerr.GetTypedValue(err, UserIDKey); ok {
+		// The retrieved value has the correct type (string), no assertion needed.
+		fmt.Printf("User ID: %s\n", userID)
+	}
+
+	if reqID, ok := goerr.GetTypedValue(err, RequestIDKey); ok {
+		fmt.Printf("Request ID: %d\n", reqID)
+	}
+
+	// Output:
+	// User ID: blue
+	// Request ID: 12345
+}

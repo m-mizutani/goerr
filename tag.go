@@ -48,7 +48,7 @@ func (t tag) Format(s fmt.State, verb rune) {
 
 // WithTags adds tags to the error. The tags are used to categorize errors.
 //
-// Deprecated: Use goerr.Tag instead.
+// Deprecated: Use the goerr.Tag option with goerr.New() or goerr.Wrap() instead.
 func (x *Error) WithTags(tags ...tag) *Error {
 	for _, tag := range tags {
 		x.tags[tag] = struct{}{}

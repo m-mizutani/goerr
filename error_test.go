@@ -792,3 +792,14 @@ func TestWith_KeyPrecedence(t *testing.T) {
 		}
 	})
 }
+
+func ExampleID() {
+	var ErrPermission = goerr.New("permission denied", goerr.ID("permission"))
+
+	err := goerr.Wrap(ErrPermission, "failed to open file")
+
+	if errors.Is(err, ErrPermission) {
+		fmt.Println("Error is a permission error")
+	}
+	// Output: Error is a permission error
+}

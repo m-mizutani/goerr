@@ -25,8 +25,8 @@ func V(key string, value any) Option {
 }
 
 // ID sets an error ID for Is() comparison.
-// Empty string ("") is treated as an invalid ID and will not be used for comparison.
-// When ID is set, errors.Is() will compare errors by ID instead of pointer equality.
+// When an ID is set, errors.Is() will compare errors by their ID string instead of by pointer equality. This allows for creating sentinel-like errors that can be matched even if they are wrapped.
+// An empty string ("") is treated as an invalid ID and will not be used for comparison.
 func ID(id string) Option {
 	return func(err *Error) {
 		err.id = id
@@ -443,9 +443,10 @@ func (x *Error) MarshalJSON() ([]byte, error) {
 	return json.Marshal(x.Printable())
 }
 
-// With adds contextual information to an error without modifying the original.
-// If err is goerr.Error, creates a new error preserving existing stacktrace and adds only new values/tags.
-// If err is not goerr.Error, wraps it with new stacktrace and adds values/tags.
+// With adds contextual information to an error without modifying the original. It is useful when you want to enrich an error with more context in a middleware or a higher-level function without altering the original error value.
+//
+// If err is a *goerr.Error, it creates a new *Error that preserves the original stacktrace and adds the new options.
+// If err is a standard error, it wraps the error in a new *goerr.Error with a new stacktrace and adds the options.
 func With(err error, options ...Option) *Error {
 	if err == nil {
 		return nil

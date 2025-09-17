@@ -5,7 +5,8 @@ type TypedKey[T any] struct {
 	name string
 }
 
-// NewTypedKey creates a new typed key with the given name
+// NewTypedKey creates a new type-safe key with the given name.
+// This key can then be used with TV() and GetTypedValue() to attach and retrieve strongly-typed values from an error, providing compile-time safety.
 func NewTypedKey[T any](name string) TypedKey[T] {
 	return TypedKey[T]{name: name}
 }

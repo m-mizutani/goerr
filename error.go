@@ -53,6 +53,12 @@ func New(msg string, options ...Option) *Error {
 }
 
 // Wrap creates a new Error and add message.
+//
+// Usage:
+//   baseErr := fmt.Errorf("connection failed")
+//   err := goerr.Wrap(baseErr, "database operation failed",
+//       goerr.V("host", "localhost"), goerr.V("port", 5432))
+//   // Result: "database operation failed: connection failed" with context
 func Wrap(cause error, msg string, options ...Option) *Error {
 	err := newError(options...)
 	err.msg = msg
@@ -384,6 +390,11 @@ func (x *Error) mergedTags() tags {
 
 // LogValue returns slog.Value for structured logging. It's implementation of slog.LogValuer.
 // https://pkg.go.dev/log/slog#LogValuer
+//
+// Usage:
+//   err := goerr.New("operation failed", goerr.V("user_id", "user123"))
+//   logger.Error("request failed", slog.Any("error", err))
+//   // Automatically outputs structured log with error details, stack trace, and values
 func (x *Error) LogValue() slog.Value {
 	if x == nil {
 		return slog.AnyValue(nil)
@@ -447,6 +458,11 @@ func (x *Error) MarshalJSON() ([]byte, error) {
 //
 // If err is a *goerr.Error, it creates a new *Error that preserves the original stacktrace and adds the new options.
 // If err is a standard error, it wraps the error in a new *goerr.Error with a new stacktrace and adds the options.
+//
+// Usage:
+//   originalErr := goerr.New("validation failed")
+//   enrichedErr := goerr.With(originalErr, goerr.V("user_id", "user123"))
+//   // originalErr is unchanged, enrichedErr has additional context
 func With(err error, options ...Option) *Error {
 	if err == nil {
 		return nil

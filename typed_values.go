@@ -7,6 +7,12 @@ type TypedKey[T any] struct {
 
 // NewTypedKey creates a new type-safe key with the given name.
 // This key can then be used with TV() and GetTypedValue() to attach and retrieve strongly-typed values from an error, providing compile-time safety.
+//
+// Usage:
+//   var UserIDKey = goerr.NewTypedKey[string]("user_id")
+//   var CountKey = goerr.NewTypedKey[int]("count")
+//   err := goerr.New("error", goerr.TV(UserIDKey, "user123"))
+//   if userID, ok := goerr.GetTypedValue(err, UserIDKey); ok { ... }
 func NewTypedKey[T any](name string) TypedKey[T] {
 	return TypedKey[T]{name: name}
 }
@@ -22,6 +28,11 @@ func (k TypedKey[T]) Name() string {
 }
 
 // TypedValue sets typed key and value to the error
+//
+// Usage:
+//   key := goerr.NewTypedKey[string]("user_id")
+//   err := goerr.New("error", goerr.TypedValue(key, "user123"))
+//   // or using alias: goerr.TV(key, "user123")
 func TypedValue[T any](key TypedKey[T], value T) Option {
 	return func(err *Error) {
 		err.typedValues[key.name] = value
@@ -43,6 +54,12 @@ func TypedValues(err error) map[string]any {
 }
 
 // GetTypedValue returns value associated with the typed key from the error. It searches through the error chain.
+//
+// Usage:
+//   key := goerr.NewTypedKey[string]("user_id")
+//   if userID, ok := goerr.GetTypedValue(err, key); ok {
+//       fmt.Printf("User ID: %s", userID) // userID is guaranteed to be string
+//   }
 func GetTypedValue[T any](err error, key TypedKey[T]) (T, bool) {
 	if e := Unwrap(err); e != nil {
 		return getTypedValueFromError(e, key)

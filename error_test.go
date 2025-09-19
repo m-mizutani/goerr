@@ -803,3 +803,145 @@ func ExampleID() {
 	}
 	// Output: Error is a permission error
 }
+
+// ExampleWith demonstrates how to add context to errors without modifying the original error.
+// goerr.With(err, options...) adds context without modifying the original error
+func ExampleWith() {
+	// Create an original error
+	originalErr := goerr.New("database connection failed")
+
+	// Add context without modifying the original error
+	// Original error remains unchanged, new error with additional context is returned
+	enrichedErr := goerr.With(originalErr,
+		goerr.V("user_id", "user123"),
+		goerr.V("component", "auth-service"),
+	)
+
+	fmt.Println("Original:", originalErr.Error())
+	fmt.Println("Enriched:", enrichedErr.Error())
+
+	// Verify original error has no additional context
+	originalValues := goerr.Values(originalErr)
+	fmt.Printf("Original has %d values\n", len(originalValues))
+
+	// Verify enriched error has the context
+	enrichedValues := goerr.Values(enrichedErr)
+	fmt.Printf("Enriched has %d values\n", len(enrichedValues))
+	fmt.Printf("User ID: %s\n", enrichedValues["user_id"])
+
+	// Output:
+	// Original: database connection failed
+	// Enriched: database connection failed
+	// Original has 0 values
+	// Enriched has 2 values
+	// User ID: user123
+}
+
+// ExampleWrap demonstrates wrapping errors with additional context.
+// goerr.Wrap(cause, message, options...) wraps an existing error and adds additional information
+func ExampleWrap() {
+	// Create a base error
+	baseErr := fmt.Errorf("connection timeout")
+
+	// Wrap the error with additional context
+	wrappedErr := goerr.Wrap(baseErr, "failed to connect to database",
+		goerr.V("host", "localhost"),
+		goerr.V("port", 5432),
+		goerr.V("timeout", "30s"),
+	)
+
+	fmt.Println("Error:", wrappedErr.Error())
+
+	// Access the wrapped values
+	values := goerr.Values(wrappedErr)
+	fmt.Printf("Host: %s\n", values["host"])
+	fmt.Printf("Port: %v\n", values["port"])
+
+	// Check if the original error is preserved
+	if errors.Is(wrappedErr, baseErr) {
+		fmt.Println("Original error is preserved")
+	}
+
+	// Output:
+	// Error: failed to connect to database: connection timeout
+	// Host: localhost
+	// Port: 5432
+	// Original error is preserved
+}
+
+// ExampleBuilder demonstrates using Builder pattern for creating errors with shared context.
+// goerr.NewBuilder(options...) creates a builder, .With(options...) extends it, .New(msg) / .Wrap(err, msg) creates errors
+func ExampleBuilder() {
+	// Create a builder with common context for a request
+	builder := goerr.NewBuilder(
+		goerr.V("service", "user-service"),
+		goerr.V("request_id", "req-12345"),
+	)
+
+	// Create errors using the builder - shared context is automatically included
+	err1 := builder.New("user not found")
+	err2 := builder.Wrap(fmt.Errorf("connection refused"), "database unavailable")
+
+	// All errors created by the builder include the shared context
+	fmt.Println("Error 1:", err1.Error())
+	fmt.Printf("Service: %s\n", goerr.Values(err1)["service"])
+
+	fmt.Println("Error 2:", err2.Error())
+	fmt.Printf("Request ID: %s\n", goerr.Values(err2)["request_id"])
+
+	// Extend the builder with additional context
+	extendedBuilder := builder.With(goerr.V("user_id", "user789"))
+	err3 := extendedBuilder.New("permission denied")
+
+	fmt.Println("Error 3:", err3.Error())
+	fmt.Printf("User ID: %s\n", goerr.Values(err3)["user_id"])
+
+	// Output:
+	// Error 1: user not found
+	// Service: user-service
+	// Error 2: database unavailable: connection refused
+	// Request ID: req-12345
+	// Error 3: permission denied
+	// User ID: user789
+}
+
+// ExampleError_LogValue demonstrates structured logging with slog.LogValuer interface.
+// goerr.Error automatically implements slog.LogValuer for structured logging with slog.Any("error", err)
+func ExampleError_LogValue() {
+	// Create an error with context
+	err := goerr.New("operation failed",
+		goerr.V("user_id", "user123"),
+		goerr.V("operation", "delete_account"),
+	)
+
+	// The error implements slog.LogValuer interface automatically
+	// When err is passed to a slog logger (e.g. via slog.Any("error", err)), its LogValue() method is called automatically.
+	// We can inspect the returned slog.Value for demonstration.
+	logValue := err.LogValue()
+
+	// Extract some information from the log value for demonstration
+	attrs := logValue.Group()
+	var message, operation string
+	for _, attr := range attrs {
+		switch attr.Key {
+		case "message":
+			message = attr.Value.String()
+		case "values":
+			valueGroup := attr.Value.Group()
+			for _, valueAttr := range valueGroup {
+				if valueAttr.Key == "operation" {
+					operation = valueAttr.Value.String()
+				}
+			}
+		}
+	}
+
+	fmt.Printf("Message: %s\n", message)
+	fmt.Printf("Operation: %s\n", operation)
+	fmt.Println("Structured logging ready")
+
+	// Output:
+	// Message: operation failed
+	// Operation: delete_account
+	// Structured logging ready
+}

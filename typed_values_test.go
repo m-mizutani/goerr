@@ -709,3 +709,72 @@ func ExampleNewTypedKey() {
 	// User ID: blue
 	// Request ID: 12345
 }
+
+// ExampleTypedValue demonstrates type-safe error value handling.
+// goerr.NewTypedKey[T](name) creates typed keys, goerr.TV(key, value) sets values, goerr.GetTypedValue(err, key) retrieves values
+func ExampleTypedValue() {
+	// Create typed keys for different types - keys provide compile-time type safety
+	userIDKey := goerr.NewTypedKey[string]("user_id")
+	retryCountKey := goerr.NewTypedKey[int]("retry_count")
+	enabledKey := goerr.NewTypedKey[bool]("enabled")
+
+	// Create error with typed values - compiler ensures type matching
+	err := goerr.New("operation failed",
+		goerr.TV(userIDKey, "user123"),    // string value
+		goerr.TV(retryCountKey, 3),        // int value
+		goerr.TV(enabledKey, true),        // bool value
+	)
+
+	// Retrieve values with type safety - no type assertions needed
+	if userID, ok := goerr.GetTypedValue(err, userIDKey); ok {
+		fmt.Printf("User ID: %s\n", userID) // userID is guaranteed to be string
+	}
+
+	if retryCount, ok := goerr.GetTypedValue(err, retryCountKey); ok {
+		fmt.Printf("Retry count: %d\n", retryCount) // retryCount is guaranteed to be int
+	}
+
+	if enabled, ok := goerr.GetTypedValue(err, enabledKey); ok {
+		fmt.Printf("Enabled: %t\n", enabled) // enabled is guaranteed to be bool
+	}
+
+	// TypedValues() returns all typed values as map[string]any
+	typedValues := goerr.TypedValues(err)
+	fmt.Printf("Total typed values: %d\n", len(typedValues))
+
+	// Output:
+	// User ID: user123
+	// Retry count: 3
+	// Enabled: true
+	// Total typed values: 3
+}
+
+// ExampleTypedValue_errorChain demonstrates typed value propagation through error chains.
+func ExampleTypedValue_errorChain() {
+	// Create typed keys
+	userIDKey := goerr.NewTypedKey[string]("user_id")
+	requestIDKey := goerr.NewTypedKey[int64]("request_id")
+
+	// Base error with user ID
+	baseErr := goerr.New("validation failed",
+		goerr.TV(userIDKey, "user456"),
+	)
+
+	// Wrapped error adds request ID - values propagate through the chain
+	wrappedErr := goerr.Wrap(baseErr, "request processing failed",
+		goerr.TV(requestIDKey, int64(789)),
+	)
+
+	// Both values are accessible from the wrapped error
+	if userID, ok := goerr.GetTypedValue(wrappedErr, userIDKey); ok {
+		fmt.Printf("User ID: %s\n", userID)
+	}
+
+	if requestID, ok := goerr.GetTypedValue(wrappedErr, requestIDKey); ok {
+		fmt.Printf("Request ID: %d\n", requestID)
+	}
+
+	// Output:
+	// User ID: user456
+	// Request ID: 789
+}

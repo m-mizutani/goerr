@@ -915,6 +915,8 @@ func ExampleError_LogValue() {
 	)
 
 	// The error implements slog.LogValuer interface automatically
+	// When err is passed to a slog logger (e.g. via slog.Any("error", err)), its LogValue() method is called automatically.
+	// We can inspect the returned slog.Value for demonstration.
 	logValue := err.LogValue()
 
 	// Extract some information from the log value for demonstration
